@@ -76,8 +76,15 @@ class TestResolution(IconFolders):
             with self.subTest(bad), self.assertRaises(ValueError) as cm:
                 self.config.validate({"icon_folders": bad})
             self.assertIn("icon_folders", str(cm.exception))
-        code, _ = self.cli("config", "set", "icon_folders=x", "--no-apply")
-        self.assertNotEqual(code, 0)
+        self.cli("config", "set", "wallpaper=none", "--no-apply")  # a config file exists
+        cfg_file = self.config.paths.config_file()
+        before = cfg_file.read_bytes() if cfg_file.exists() else None
+        for arg in ("icon_folders=x", "icon_folders="):
+            code, out = self.cli("config", "set", arg, "--no-apply")
+            self.assertEqual(code, 2, arg)
+            self.assertIn("erro", out)
+            self.assertIn("icon_folders", out)
+            self.assertEqual(cfg_file.read_bytes() if cfg_file.exists() else None, before, arg)  # config untouched
 
     def test_icon_folders_is_not_part_of_a_theme_package(self):
         from nebulix import themes
@@ -98,6 +105,19 @@ class TestAutoFollowsTheme(IconFolders):
         self.cli("theme", "nebulix", "--no-apply")
         self.assertEqual(self.config.load()["icon_folders"], "auto")
         self.assertEqual(self.apply(self.config.load()), "'Nebulix-Icons'")
+
+
+class TestThemePackage(IconFolders):
+    def test_each_theme_writes_whitesur_over_a_papirus_config(self):  # TC-10 (AC-6)
+        import tomllib
+        for th, _ in THEMES:
+            with self.subTest(th):
+                self.cli("config", "set", "icons=papirus", "--no-apply")
+                self.assertEqual(self.config.load()["icons"], "papirus")
+                code, _ = self.cli("theme", th, "--no-apply")
+                self.assertEqual(code, 0)
+                data = tomllib.loads(self.paths.config_file().read_text())
+                self.assertEqual(data["icons"], "whitesur")
 
 
 class TestExplicitChoice(IconFolders):

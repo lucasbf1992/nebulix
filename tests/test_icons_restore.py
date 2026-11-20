@@ -84,6 +84,23 @@ class TestRemoveIcons(Restore):
         for n in left:
             self.assertTrue((self.home / ".local/share/icons" / n / "index.theme").exists(), n)
 
+    def test_a_folder_that_cannot_be_removed_does_not_stop_the_reset(self):  # F-4
+        import shutil
+        self.mk("MacTahoe-dark", "MacTahoe-light", "Papirus")
+        self.apply(self.cfg(icons="mactahoe"), only=["icons"], install=False)
+        real = shutil.rmtree
+
+        def deny(path, *a, **kw):
+            if Path(path).name == "MacTahoe-dark":
+                raise PermissionError(13, "Permission denied", str(path))
+            return real(path, *a, **kw)
+        with mock.patch("nebulix.restore.shutil.rmtree", side_effect=deny):
+            code, out = self.cli("reset", "--remove-icons")
+        self.assertEqual(code or 0, 0)
+        self.assertIn("não foi possível remover", out)
+        self.assertIn("MacTahoe-dark", out)
+        self.assertEqual(self.tree(), ["MacTahoe-dark", "Papirus"])  # the rest went, the stuck one is reported
+
     def test_the_six_names_the_old_release_made_go_too(self):
         self.mk(*OLD_WHITESUR, "Papirus", "Yaru-custom")
         self.apply(self.cfg(icons="whitesur"), only=["icons"], install=False)

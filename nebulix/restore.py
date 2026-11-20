@@ -79,7 +79,13 @@ def _restore(mode="undo", log=print, remove_icons=False, dry=False):
             if p.is_symlink() or p.exists():
                 log(f"remove {p}")
                 if not dry:
-                    shutil.rmtree(p) if p.is_dir() and not p.is_symlink() else p.unlink()
+                    try:
+                        shutil.rmtree(p) if p.is_dir() and not p.is_symlink() else p.unlink()
+                    except OSError as e:
+                        log(f"! não foi possível remover {p}: {e.strerror or e}")
+                    else:
+                        if p.is_symlink() or p.exists():
+                            log(f"! não foi possível remover {p}")
         cache = icons.cache_dir()
         if cache.exists():
             log(f"remove {cache}")

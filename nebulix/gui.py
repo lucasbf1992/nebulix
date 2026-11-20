@@ -11,6 +11,7 @@ from gi.repository import Adw, Gdk, GLib, Gtk  # noqa: E402
 from . import __version__, config, doctor, gen, icons, palette, paths, themes  # noqa: E402
 from .apply import apply, terminal_font  # noqa: E402
 from .restore import restore  # noqa: E402
+from .state import lock  # noqa: E402
 
 APP_ID = "io.github.nebulix.Settings"
 LABELS = {
@@ -394,7 +395,6 @@ class SettingsWindow(Adw.PreferencesWindow):
         self._dl_busy = True
         self.dl_btn.set_sensitive(False)
         self.dl_row.set_subtitle("Baixando…")
-        cfg = dict(self.cfg)
 
         def done(err):
             self._dl_busy = False
@@ -402,14 +402,16 @@ class SettingsWindow(Adw.PreferencesWindow):
             if err:
                 self.dl_row.set_visible(True)
                 self.dl_row.set_subtitle(f"Falhou: {err}")
+            else:
+                self._apply_now(only=["icons"])  # the config as it is now, not as it was when the download began
             self.toast(f"Falhou: {err}" if err else "Ícones instalados e aplicados", bool(err))
             return False
 
         def work():
             err = None
             try:
-                icons.ensure_set(mode, lambda *_: None, theme, accent)
-                apply(cfg, only=["icons"], log=lambda *_: None)
+                with lock():  # an apply or restore never overlaps the installer
+                    icons.ensure_set(mode, lambda *_: None, theme, accent)
             except Exception as e:  # network, checksum or installer failure
                 err = str(e)
             GLib.idle_add(done, err)

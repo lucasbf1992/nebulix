@@ -348,6 +348,19 @@ class TestFailures(MultiSet):
         self.assertEqual(len(self.installer_runs()), 1)
         self.assertEqual(self.tree(), ["Yaru-custom"])
 
+    def test_cleanup_after_a_failure_keeps_the_overlay_written_meanwhile(self):  # F-2
+        self.serve_set("mactahoe", installer_ok=False)
+        icons_dir = self.home / ".local/share/icons"
+        icons_dir.mkdir(parents=True)
+        real = self.icons.subprocess.run
+
+        def run(*a, **kw):  # an apply writes the overlay while the installer runs
+            (icons_dir / "Nebulix-Icons").mkdir()
+            return real(*a, **kw)
+        with mock.patch.object(self.icons.subprocess, "run", side_effect=run), self.assertRaisesRegex(RuntimeError, "falhou"):
+            self.icons.ensure_set("mactahoe", self.log.append, "macos-dark")
+        self.assertEqual(self.tree(), ["Nebulix-Icons"])
+
     def test_apply_falls_back_to_papirus_when_the_installer_fails(self):  # TC-18
         self.serve_set("mcmojave", installer_ok=False)
         (self.home / ".local/share/icons/Papirus-Dark").mkdir(parents=True)

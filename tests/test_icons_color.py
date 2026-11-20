@@ -13,18 +13,18 @@ import test_icons_sets as base  # noqa: E402
 EXPECTED = {
     "whitesur": {
         "nebulix": {"nebulix": "purple", "magenta": "pink", "cyan": "default", "blue": "default", "green": "green", "amber": "yellow"},
-        "nebulix-light": {"nebulix": "purple", "magenta": "pink", "cyan": "default", "blue": "default", "green": "default", "amber": "yellow"},
-        "macos-dark": {"blue": "default", "purple": "purple", "pink": "red", "red": "red", "orange": "yellow", "yellow": "yellow",
+        "nebulix-light": {"nebulix": "purple", "magenta": "pink", "cyan": "default", "blue": "default", "green": "green", "amber": "yellow"},
+        "macos-dark": {"blue": "default", "purple": "purple", "pink": "pink", "red": "red", "orange": "orange", "yellow": "yellow",
                        "green": "green", "graphite": "grey"},
     },
     "mactahoe": {
         "nebulix": {"nebulix": "purple", "magenta": "purple", "cyan": "blue", "blue": "blue", "green": "green", "amber": "yellow"},
         "macos-dark": {"blue": "blue", "purple": "purple", "pink": "red", "red": "red", "orange": "orange", "yellow": "yellow",
-                       "green": "green", "graphite": "grey"},
+                       "green": "green", "graphite": "grey"},  # MacTahoe has no pink: the closest hue
     },
     "mcmojave": {
         "nebulix": {"nebulix": "purple", "magenta": "pink", "cyan": "blue", "blue": "blue", "green": "green", "amber": "yellow"},
-        "macos-dark": {"blue": "blue", "purple": "purple", "pink": "red", "red": "red", "orange": "orange", "yellow": "yellow",
+        "macos-dark": {"blue": "blue", "purple": "purple", "pink": "pink", "red": "red", "orange": "orange", "yellow": "yellow",
                        "green": "green", "graphite": "grey"},
     },
 }
@@ -78,6 +78,21 @@ class TestMapping(IconColor):
                         self.apply(sid, theme, accent)
                         want = prefix + ("" if color == "default" else f"-{color}") + f"-{scheme}"
                         self.assertEqual(self.shown_base(), want)
+
+    def test_an_accent_gets_the_colour_of_the_same_name_when_the_set_has_it(self):  # FR-10
+        from nebulix import themes
+        for sid in self.icons.SETS:
+            colors = self.icons.SETS[sid]["colors"]
+            for theme in ("macos-dark", "macos-light", "nebulix", "nebulix-light"):
+                for accent in themes.get(theme)["accents"]:
+                    if accent in colors and accent not in ("nord", "black"):
+                        with self.subTest(set=sid, theme=theme, accent=accent):
+                            self.assertEqual(self.icons.accent_color(sid, theme, accent), accent)
+        self.assertEqual(self.icons.accent_color("whitesur", "macos-dark", "pink"), "pink")
+        self.assertEqual(self.icons.accent_color("whitesur", "macos-light", "orange"), "orange")
+        self.assertEqual(self.icons.accent_color("whitesur", "nebulix-light", "green"), "green")
+        self.assertEqual(self.icons.accent_color("whitesur", "macos-dark", "blue"), "default")  # the set's own blue
+        self.assertEqual(self.icons.accent_color("mactahoe", "macos-dark", "pink"), "red")  # no pink: closest hue
 
     def test_fixed_cases_cyan_amber_graphite(self):
         from nebulix import themes

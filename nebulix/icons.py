@@ -74,10 +74,15 @@ def _hue_distance(a, b):
     return min(d, 360 - d)
 
 
-def set_color(set_id, accent_hex):
-    """Installer colour of a set for an accent: the colour whose reference hue is closest to the accent's hue; an
+def set_color(set_id, accent_hex, name=None):
+    """Installer colour of a set for an accent. An accent that has a colour of the same name in the set gets that one
+    (`blue` is the set's default colour); otherwise the colour whose reference hue is closest to the accent's hue; an
     accent with little saturation goes to the set's neutral colour (grey) when it has one, else to the set's blue."""
     entry = SETS[set_id]
+    if name in entry["colors"] and name not in _NOT_A_HUE and name != entry.get("neutral"):
+        return name
+    if name == "blue":
+        return entry["default_color"]
     hue, sat = _hue_sat(accent_hex)
     if sat < NEUTRAL_SATURATION:
         return entry["neutral"] if entry.get("neutral") in entry["colors"] else entry["default_color"]
@@ -88,7 +93,9 @@ def set_color(set_id, accent_hex):
 
 def accent_color(set_id, theme, accent="auto"):
     """Colour of a set for the accent of a theme (`auto` is the theme's own default accent)."""
-    return set_color(set_id, themes.accent_hex(theme, accent))
+    th = themes.get(theme)
+    name = th["default_accent"] if accent == "auto" else accent
+    return set_color(set_id, themes.accent_hex(theme, accent), name if name in th["accents"] else None)
 
 
 def folder_name(set_id, color, scheme):
@@ -237,8 +244,9 @@ def ensure_set(set_id, log=print, theme="nebulix", accent="auto"):
             if r.returncode:
                 raise RuntimeError(f"instalador do {entry['label']} falhou (código {r.returncode}) {r.stderr.strip()[-200:]}".strip())
         except BaseException:
+            owned = set(owned_folders()) - {THEME_NAME}  # never the Nebulix overlay, which an apply may be writing
             for p in dest.iterdir():
-                if p.name not in before:
+                if p.name not in before and p.name in owned:
                     shutil.rmtree(p, ignore_errors=True) if p.is_dir() and not p.is_symlink() else p.unlink(missing_ok=True)
             raise
     return has_theme(base)
