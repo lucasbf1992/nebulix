@@ -114,6 +114,15 @@ class TestLabels(Sandbox):
         missing += [f"COMP_LABELS[{c!r}]" for c in config.COMPONENTS if c not in comp]
         self.assertEqual(missing, [])
 
+    def test_icon_pickers_label_exactly_the_accepted_values(self):  # TC-31
+        from nebulix import config, icons
+        labels, _comp = self.literal_labels()
+        shown = {"whitesur", "mactahoe", "mcmojave", "papirus", "keep"}
+        self.assertEqual(labels["icons"], (shown, False))
+        self.assertEqual(set(config.CHOICES["icons"]), shown)
+        self.assertEqual(set(icons.SETS) | {"papirus", "keep"}, shown)
+        self.assertEqual(labels["icon_folders"], (set(config.CHOICES["icon_folders"]), False))
+
     def test_no_label_for_a_value_that_does_not_exist(self):
         from nebulix import config
         labels, comp = self.literal_labels()
