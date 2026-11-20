@@ -4,6 +4,8 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 V="$(python3 -c 'from nebulix import __version__ as v; print(v)')"
+REV="${DEB_REV:-2}"   # Debian revision: bump it so apt upgrades a rebuilt package of the same version
+DV="$V-$REV"
 python3 -m unittest discover -s tests >/dev/null
 python3 build.py >/dev/null
 rm -rf release && mkdir -p release
@@ -85,7 +87,7 @@ chmod 755 "$D/DEBIAN/postinst" "$D/DEBIAN/prerm" "$D/DEBIAN/postrm"
 SIZE=$(du -sk "$D/usr" | cut -f1)
 cat >"$D/DEBIAN/control" <<X
 Package: nebulix
-Version: $V
+Version: $DV
 Architecture: all
 Maintainer: Lucas <lucasbf1992@users.noreply.github.com>
 Section: gnome
@@ -104,6 +106,6 @@ Description: Nebulix - customizable dark purple theme for GNOME
 X
 find "$D" -type d -exec chmod 755 {} +; find "$D/usr" -type f -exec chmod 644 {} +
 chmod 755 "$D/usr/bin/nebulix"
-fakeroot dpkg-deb --build -Zxz "$D" "release/nebulix_${V}_all.deb" >/dev/null
+fakeroot dpkg-deb --build -Zxz "$D" "release/nebulix_${DV}_all.deb" >/dev/null
 ( cd release && sha256sum * > SHA256SUMS )
 ls -lh release
