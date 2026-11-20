@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 """macOS-style icons: WhiteSur (downloaded, pinned) + Nebulix squircle folder overlay."""
 import hashlib
+import os
 import shutil
 import subprocess
 import tarfile
@@ -10,10 +11,21 @@ from pathlib import Path
 
 from . import paths, palette, themes
 
-WHITESUR_TAG = "v2025-02-10"
-WHITESUR_URL = f"https://github.com/vinceliuice/WhiteSur-icon-theme/archive/refs/tags/{WHITESUR_TAG}.tar.gz"
-WHITESUR_SHA256 = "b94a3db27bd746c267b882a957f863e3ef62eebec7d21c4436b90913597386a6"
-WHITESUR_SIZE_MB = 7
+# Downloadable icon sets: pinned release tarball + checksum. A test points NEBULIX_ICONS_SOURCE at a directory that
+# holds `<file>` for each entry instead of the network (and may patch.dict an entry with its own sha256).
+SETS = {
+    "whitesur": {
+        "label": "WhiteSur", "tag": "v2025-02-10",
+        "url": "https://github.com/vinceliuice/WhiteSur-icon-theme/archive/refs/tags/v2025-02-10.tar.gz",
+        "file": "v2025-02-10.tar.gz",
+        "sha256": "b94a3db27bd746c267b882a957f863e3ef62eebec7d21c4436b90913597386a6",
+        "size_mb": 7, "license": "GPL-3.0",
+    },
+}
+WHITESUR_TAG = SETS["whitesur"]["tag"]
+WHITESUR_URL = SETS["whitesur"]["url"]
+WHITESUR_SHA256 = SETS["whitesur"]["sha256"]
+WHITESUR_SIZE_MB = SETS["whitesur"]["size_mb"]
 THEME_NAME = "Nebulix-Icons"
 
 
@@ -44,19 +56,30 @@ def has_theme(name):
     return any((d / name).is_dir() for d in icon_dirs())
 
 
+def fetch_tarball(set_id, dest):
+    """Save the tarball of `SETS[set_id]` to `dest`: from $NEBULIX_ICONS_SOURCE/<file> when that is set, else from the URL."""
+    entry = SETS[set_id]
+    source = os.environ.get("NEBULIX_ICONS_SOURCE")
+    if source:
+        shutil.copyfile(Path(source) / entry["file"], dest)
+        return
+    req = urllib.request.Request(entry["url"], headers={"User-Agent": "nebulix"})
+    with urllib.request.urlopen(req, timeout=60) as r, open(dest, "wb") as f:
+        shutil.copyfileobj(r, f)
+
+
 def ensure_whitesur(log=print, theme="nebulix"):
     """Download the pinned tarball, verify sha256 and run its own installer into ~/.local/share/icons."""
     base = base_name(theme)
     if has_theme(base):
         return True
-    log(f"baixando WhiteSur {WHITESUR_TAG} (~{WHITESUR_SIZE_MB} MB, GPL-3.0)")
+    ws = SETS["whitesur"]
+    log(f"baixando {ws['label']} {ws['tag']} (~{ws['size_mb']} MB, {ws['license']})")
     with tempfile.TemporaryDirectory() as tmp:
         tmp = Path(tmp)
         tgz = tmp / "ws.tar.gz"
-        req = urllib.request.Request(WHITESUR_URL, headers={"User-Agent": "nebulix"})
-        with urllib.request.urlopen(req, timeout=60) as r, open(tgz, "wb") as f:
-            shutil.copyfileobj(r, f)
-        if hashlib.sha256(tgz.read_bytes()).hexdigest() != WHITESUR_SHA256:
+        fetch_tarball("whitesur", tgz)
+        if hashlib.sha256(tgz.read_bytes()).hexdigest() != ws["sha256"]:
             raise RuntimeError("sha256 do WhiteSur não confere; abortado")
         out = tmp / "x"
         with tarfile.open(tgz) as t:
