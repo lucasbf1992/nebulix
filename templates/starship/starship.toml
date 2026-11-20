@@ -1,0 +1,54 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# ${name} ${version} — Starship prompt
+"$schema" = 'https://starship.rs/config-schema.json'
+add_newline = true
+format = """
+[](fg:${purple-dim})$username[](fg:${purple-dim} bg:${purple})$directory[](fg:${purple} bg:${magenta})$git_branch$git_status[](fg:${magenta} bg:${bg-3})$python$nodejs$rust$golang$cmd_duration[](fg:${bg-3})
+$character"""
+
+[username]
+show_always = true
+style_user = "bg:${purple-dim} fg:${fg-0} bold"
+style_root = "bg:${red} fg:${bg-0} bold"
+format = '[ $user ]($style)'
+
+[directory]
+style = "bg:${purple} fg:${bg-0} bold"
+format = "[ $path ]($style)"
+truncation_length = 3
+truncation_symbol = "…/"
+
+[git_branch]
+symbol = " "
+style = "bg:${magenta} fg:${bg-0} bold"
+format = '[ $symbol$branch ]($style)'
+
+[git_status]
+style = "bg:${magenta} fg:${bg-0}"
+format = '[$all_status$ahead_behind ]($style)'
+
+[python]
+symbol = " "
+style = "bg:${bg-3} fg:${cyan}"
+format = '[ $symbol$version ]($style)'
+[nodejs]
+symbol = " "
+style = "bg:${bg-3} fg:${cyan}"
+format = '[ $symbol$version ]($style)'
+[rust]
+symbol = " "
+style = "bg:${bg-3} fg:${cyan}"
+format = '[ $symbol$version ]($style)'
+[golang]
+symbol = " "
+style = "bg:${bg-3} fg:${cyan}"
+format = '[ $symbol$version ]($style)'
+
+[cmd_duration]
+min_time = 2000
+style = "bg:${bg-3} fg:${yellow}"
+format = '[ 󰔛 $duration ]($style)'
+
+[character]
+success_symbol = "[❯](bold ${green})"
+error_symbol = "[❯](bold ${red})"

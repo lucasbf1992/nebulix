@@ -1,0 +1,274 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+"""Render the theme for a config and install it for the current user (reversible via restore.py)."""
+import hashlib
+import json
+import re
+import shutil
+import subprocess
+import tempfile
+import uuid
+from pathlib import Path
+
+from . import __version__, config, gen, icons, paths, palette, render, wallpapers
+from .state import State, gs
+
+UT = "user-theme@gnome-shell-extensions.gcampax.github.com"
+DOCK = "org.gnome.shell.extensions.dash-to-dock"
+IFACE = "org.gnome.desktop.interface"
+TESTED_GNOME = ("50", "51")
+TOUCHED_KEYS = [
+    (IFACE, "color-scheme"), (IFACE, "accent-color"), (IFACE, "gtk-theme"), (IFACE, "icon-theme"),
+    ("org.gnome.desktop.background", "picture-uri"), ("org.gnome.desktop.background", "picture-uri-dark"),
+    ("org.gnome.desktop.screensaver", "picture-uri"), ("org.gnome.shell.extensions.user-theme", "name"),
+    ("org.gnome.desktop.wm.preferences", "button-layout"),
+] + [(DOCK, k) for k in ("dock-position", "extend-height", "dash-max-icon-size", "transparency-mode", "background-opacity",
+                         "apply-custom-theme", "show-apps-at-top", "running-indicator-style",
+                         "custom-theme-customize-running-dots", "custom-theme-running-dots-color", "click-action")]
+THEME = "Nebulix-Dark"
+
+
+def q(s):
+    return "'" + s + "'"
+
+
+def render_all(cfg, out: Path, log=print):
+    """Render templates/ + generated formats into `out`; returns tokens."""
+    P, t = palette.tokens(cfg)
+    base = paths.data_dir() / "templates"
+    for f in sorted(base.rglob("*")):
+        if not f.is_file():
+            continue
+        dest = out / f.relative_to(base)
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            dest.write_text(render.render(f.read_text(), t, cfg, str(f)))
+        except UnicodeDecodeError:
+            shutil.copy2(f, dest)
+    gen.generate(P, t, out)
+    return t
+
+
+STOCK_IMPORT = '@import url("resource:///org/gnome/shell/theme/gnome-shell-dark.css");'
+SHELL_GRESOURCE = "/usr/share/gnome-shell/gnome-shell-theme.gresource"
+
+
+def inline_stock_shell_css(text):
+    """Prepend the stock dark Shell stylesheet, extracted locally from the installed gnome-shell.
+    This keeps the theme working even if the Shell does not resolve @import of resources; nothing is redistributed."""
+    if shutil.which("gresource"):
+        r = subprocess.run(["gresource", "extract", SHELL_GRESOURCE, "/org/gnome/shell/theme/gnome-shell-dark.css"],
+                           capture_output=True, text=True)
+        if r.returncode == 0 and r.stdout.strip():
+            return text.replace(STOCK_IMPORT, "/* stock GNOME Shell dark stylesheet, extracted from your gnome-shell install (GPL-2.0-or-later) */\n" + r.stdout)
+    return text
+
+
+def _put_file(st: State, src: Path, dest: Path):
+    st.log(f"→ {dest}")
+    if st.dry:
+        return
+    st._backup(dest)
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(src, dest)
+    st.note(str(dest))
+
+
+def _forget(st: State, pred, log=print):
+    for e in list(st.manifest):
+        if e.startswith("/") and pred(e):
+            if not st.dry:
+                shutil.rmtree(e, ignore_errors=True) if Path(e).is_dir() else Path(e).unlink(missing_ok=True)
+            st.manifest.remove(e)
+
+
+def gnome_major():
+    if not shutil.which("gnome-shell"):
+        return None
+    m = re.search(r"(\d+)", subprocess.run(["gnome-shell", "--version"], capture_output=True, text=True).stdout)
+    return m.group(1) if m else None
+
+
+def apply(cfg=None, dry=False, log=print, install_icons=False, only=None):
+    cfg = config.validate(cfg or config.load())
+    comps = set(only or cfg["components"])
+    st = State(dry=dry, log=log)
+    maj = gnome_major()
+    if maj and maj not in TESTED_GNOME:
+        log(f"! GNOME Shell {maj} não foi testado (testados: {', '.join(TESTED_GNOME)})")
+    stage = Path(tempfile.mkdtemp(prefix="nebulix-"))
+    try:
+        t = render_all(cfg, stage, log)
+        home, conf, data = paths.home(), paths.conf_home(), paths.data_home()
+        acc = t["purple"]
+        if "gtk" in comps or "shell" in comps:
+            theme = data / "themes" / THEME
+            st.put_text((stage / "index.theme").read_text(), theme / "index.theme")
+        if "gtk" in comps:
+            st.put_tree(stage / "gtk-3.0", data / "themes" / THEME / "gtk-3.0")
+            st.put_tree(stage / "gtk-4.0", data / "themes" / THEME / "gtk-4.0")
+            st.put_text((stage / "gtk-4.0/colors.css").read_text(), conf / "gtk-4.0/nebulix-colors.css")
+            st.put_text((stage / "gtk-4.0/tweaks.css").read_text(), conf / "gtk-4.0/nebulix-tweaks.css")
+            _gtk4_block(st, conf / "gtk-4.0/gtk.css")
+            st.gs_set(IFACE, "color-scheme", "'prefer-dark'")
+            st.gs_set(IFACE, "accent-color", q(config.GNOME_ACCENT.get(cfg["accent"], "purple")))
+            st.gs_set(IFACE, "gtk-theme", q(THEME))
+            if shutil.which("flatpak") and not dry and "flatpak" not in st.manifest:
+                r = subprocess.run(["flatpak", "override", "--user", "--filesystem=xdg-config/gtk-4.0:ro",
+                                    "--filesystem=xdg-config/gtk-3.0:ro", "--filesystem=xdg-data/themes:ro"], capture_output=True)
+                if r.returncode == 0:
+                    st.note("flatpak")
+            wm = "'close,minimize,maximize:appmenu'" if cfg["window_buttons"] == "mac" else "'appmenu:minimize,maximize,close'"
+            st.gs_set("org.gnome.desktop.wm.preferences", "button-layout", wm)
+        if "shell" in comps:
+            css = stage / "gnome-shell/gnome-shell.css"
+            css.write_text(inline_stock_shell_css(css.read_text()))
+            st.put_tree(stage / "gnome-shell", data / "themes" / THEME / "gnome-shell")
+            _shell_enable(st, dry, log)
+            _dock(st, cfg, acc)
+        if "terminal" in comps:
+            st.put_text((stage / "terminal/nebulix.palette").read_text(), data / "org.gnome.Ptyxis/palettes/nebulix.palette")
+            u = (gs("get", "org.gnome.Ptyxis", "default-profile-uuid") or "").strip("'")
+            if u and not dry:
+                st.gs_set(f"org.gnome.Ptyxis.Profile:/org/gnome/Ptyxis/Profiles/{u}/", "palette", "'nebulix'")
+            _gnome_terminal(st, stage, dry, log)
+        if "starship" in comps:
+            st.put_text((stage / "starship/starship.toml").read_text(), conf / "starship.toml")
+        if "fastfetch" in comps:
+            st.put_text((stage / "fastfetch/config.jsonc").read_text(), conf / "fastfetch/config.jsonc")
+        if "btop" in comps:
+            st.put_text((stage / "btop/nebulix.theme").read_text(), conf / "btop/themes/nebulix.theme")
+        if "nvim" in comps:
+            st.put_text((stage / "nvim/colors/nebulix.lua").read_text(), conf / "nvim/colors/nebulix.lua")
+        if "vscode" in comps:
+            new = home / ".vscode/extensions" / f"nebulix.nebulix-theme-{__version__}"
+            _forget(st, lambda e: ".vscode/extensions/nebulix.nebulix-theme-" in e and e != str(new))
+            st.put_tree(stage / "vscode/nebulix-theme", new)
+        if "wallpaper" in comps:
+            _wallpaper(st, cfg, t, stage, dry, log)
+        if "icons" in comps:
+            _icons(st, cfg, t, stage, dry, install_icons, log)
+        st.save()
+    finally:
+        shutil.rmtree(stage, ignore_errors=True)
+    log("ok" if not dry else "dry-run: nada foi alterado.")
+    return st
+
+
+def _gtk4_block(st, g4: Path):
+    st.log(f"→ bloco gerenciado em {g4}")
+    if st.dry:
+        return
+    if g4.exists() and "NEBULIX-BEGIN" not in g4.read_text():
+        st._backup(g4)
+    old = g4.read_text() if g4.exists() else ""
+    old = re.sub(r"/\* NEBULIX-BEGIN \*/.*?/\* NEBULIX-END \*/\n?", "", old, flags=re.S)
+    g4.parent.mkdir(parents=True, exist_ok=True)
+    g4.write_text(old + '/* NEBULIX-BEGIN */\n@import url("nebulix-colors.css");\n@import url("nebulix-tweaks.css");\n/* NEBULIX-END */\n')
+    st.note(f"gtkblock:{g4}")
+
+
+def _shell_enable(st, dry, log):
+    if not shutil.which("gnome-extensions"):
+        return
+    lst = subprocess.run(["gnome-extensions", "list"], capture_output=True, text=True).stdout.split()
+    if UT not in lst:
+        log("! extensão User Themes ausente: sudo apt install gnome-shell-extensions")
+        return
+    if dry:
+        return
+    en = subprocess.run(["gnome-extensions", "list", "--enabled"], capture_output=True, text=True).stdout.split()
+    if UT not in en:
+        subprocess.run(["gnome-extensions", "enable", UT], capture_output=True)
+        st.note(f"ext:{UT}")
+    # toggling the name makes the running Shell reload the stylesheet without a logout
+    subprocess.run(["gsettings", "set", "org.gnome.shell.extensions.user-theme", "name", "''"], capture_output=True)
+    st.gs_set("org.gnome.shell.extensions.user-theme", "name", q(THEME))
+
+
+DOCK_KEYS = [k for s, k in TOUCHED_KEYS if s == DOCK]
+
+
+def _dock(st, cfg, acc):
+    if cfg["dock"] != "macos":
+        for k in DOCK_KEYS:
+            st.gs_release(DOCK, k)
+        return
+    pos = "'BOTTOM'" if cfg["dock_position"] == "bottom" else "'LEFT'"
+    for k, v in (("dock-position", pos), ("extend-height", "false"), ("dash-max-icon-size", str(cfg["dock_icon_size"])),
+                 ("transparency-mode", "'FIXED'"), ("background-opacity", f"{cfg['dock_opacity'] / 100:.2f}"),
+                 ("apply-custom-theme", "false"), ("show-apps-at-top", "false"), ("running-indicator-style", "'DOTS'"),
+                 ("custom-theme-customize-running-dots", "true"), ("custom-theme-running-dots-color", q(acc)),
+                 ("click-action", "'minimize-or-previews'")):
+        st.gs_set(DOCK, k, v)
+
+
+def _gnome_terminal(st, stage, dry, log):
+    if dry or not shutil.which("dconf") or any(e.startswith("gnt:") for e in st.manifest):
+        return
+    base = "/org/gnome/terminal/legacy/profiles:/"
+    cur = subprocess.run(["dconf", "read", base + "list"], capture_output=True, text=True).stdout.strip()
+    if not cur:
+        return
+    u = str(uuid.uuid4())
+    subprocess.run(["dconf", "load", f"{base}:{u}/"], input=(stage / "terminal/nebulix-gnome-terminal.dconf").read_text(), text=True)
+    subprocess.run(["dconf", "write", base + "list", re.sub(r"\]$", f", '{u}']", cur)])
+    st.note(f"gnt:{u}:{cur}")
+    log("perfil 'Nebulix' adicionado ao GNOME Terminal")
+
+
+def _wallpaper(st, cfg, t, stage, dry, log):
+    d = cfg["wallpaper"]
+    wdir = paths.data_home() / "backgrounds" / "nebulix"
+    if d == "none":
+        for k in (("org.gnome.desktop.background", "picture-uri"), ("org.gnome.desktop.background", "picture-uri-dark"),
+                  ("org.gnome.desktop.screensaver", "picture-uri")):
+            st.gs_release(*k)
+        return
+    if d.startswith("gen-"):  # generated in code, follows the accent
+        w, h = wallpapers.SIZES[cfg["wallpaper_size"]]
+        tag = hashlib.sha1(json.dumps([t["purple"], cfg["variant"], d, w, h]).encode()).hexdigest()[:8]
+        name = f"nebulix-{d}-{tag}.png"
+        dest = wdir / name
+        if not dest.exists() and not dry:
+            log(f"→ renderizando wallpaper {d} {w}x{h}")
+            wallpapers.rasterize(wallpapers.svg(d[4:], w, h, t), stage / name)
+            src = stage / name
+        else:
+            src = dest if dest.exists() else None
+    else:  # the artwork shipped in images/wallpapers
+        name = f"nebulix-{d}.png"
+        dest, src = wdir / name, paths.data_dir() / "images" / "wallpapers" / name
+    _forget(st, lambda e: e.startswith(str(wdir) + "/nebulix-") and e != str(dest))
+    if not dry and src and src != dest:
+        _put_file(st, src, dest)
+    elif dry:
+        log(f"→ {dest}")
+    uri = q(f"file://{dest}")
+    st.gs_set("org.gnome.desktop.background", "picture-uri", uri)
+    st.gs_set("org.gnome.desktop.background", "picture-uri-dark", uri)
+    st.gs_set("org.gnome.desktop.screensaver", "picture-uri", uri)
+
+
+def _icons(st, cfg, t, stage, dry, install, log):
+    mode = cfg["icons"]
+    if mode == "keep":
+        st.gs_release(IFACE, "icon-theme")
+        return
+    if mode == "papirus":
+        if icons.has_theme("Papirus-Dark"):
+            st.gs_set(IFACE, "icon-theme", "'Papirus-Dark'")
+        else:
+            log("! Papirus ausente: sudo apt install papirus-icon-theme")
+        return
+    if not icons.has_theme(icons.BASE):
+        if install and not dry:
+            try:
+                icons.ensure_whitesur(log)
+            except Exception as e:  # network or checksum failure: fall back to Papirus
+                log(f"! WhiteSur indisponível ({e}); usando Papirus")
+        else:
+            log("! WhiteSur não instalado: rode `nebulix icons install` (baixa ~7 MB, GPL-3.0). Usando Papirus por enquanto.")
+    root = icons.write_overlay(t, stage / "icons" / icons.THEME_NAME) if not dry else None
+    if root:
+        st.put_tree(root, paths.data_home() / "icons" / icons.THEME_NAME)
+    st.gs_set(IFACE, "icon-theme", q(icons.THEME_NAME))

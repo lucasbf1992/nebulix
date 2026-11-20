@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200"><!-- SPDX-License-Identifier: CC-BY-SA-4.0 -->
+<circle cx="100" cy="100" r="46" fill="none" stroke="#A66BFF" stroke-width="8"/>
+<ellipse cx="100" cy="100" rx="86" ry="26" transform="rotate(-18 100 100)" fill="none" stroke="#FF4FD8" stroke-width="6"/>
+<path d="M84 80l22 20-22 20" fill="none" stroke="#ECE6FF" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+<rect x="108" y="116" width="22" height="7" rx="3" fill="#3BE8E8"/></svg>

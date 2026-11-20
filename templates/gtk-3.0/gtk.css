@@ -1,0 +1,62 @@
+/* SPDX-License-Identifier: GPL-3.0-or-later */
+/* ${name} ${version} — GTK3 theme. Reuses GTK's built-in Adwaita dark sheet (loaded from
+   libgtk resources at runtime, nothing is copied) and layers the Nebulix palette on top. */
+@import url("resource:///org/gtk/libgtk/theme/Adwaita/gtk-contained-dark.css");
+
+@define-color theme_bg_color ${bg-1};
+@define-color theme_fg_color ${fg-0};
+@define-color theme_base_color ${bg-0};
+@define-color theme_text_color ${fg-0};
+@define-color theme_selected_bg_color ${accent-fill};
+@define-color theme_selected_fg_color ${on-fill};
+@define-color theme_unfocused_bg_color ${bg-1};
+@define-color theme_unfocused_fg_color ${fg-1};
+@define-color theme_unfocused_base_color ${bg-0};
+@define-color theme_unfocused_text_color ${fg-1};
+@define-color theme_unfocused_selected_bg_color ${border};
+@define-color theme_unfocused_selected_fg_color ${fg-0};
+@define-color borders ${border};
+@define-color unfocused_borders ${bg-3};
+@define-color insensitive_bg_color ${bg-2};
+@define-color insensitive_fg_color ${fg-2};
+@define-color insensitive_base_color ${bg-1};
+@define-color content_view_bg ${bg-0};
+@define-color link_color ${cyan};
+@define-color visited_link_color ${magenta};
+@define-color warning_color ${yellow};
+@define-color error_color ${red};
+@define-color success_color ${green};
+@define-color tooltip_bg_color ${bg-3};
+@define-color tooltip_fg_color ${fg-0};
+@define-color tooltip_border_color ${border};
+@define-color placeholder_text_color ${fg-2};
+
+window, .background { background-color: ${bg-1}; color: ${fg-0}; }
+headerbar, .titlebar { background: ${bg-0}; border-color: ${border}; box-shadow: none; }
+entry, spinbutton { background: ${bg-2}; border-color: ${border}; color: ${fg-0}; }
+entry:focus, spinbutton:focus { border-color: ${purple}; box-shadow: 0 0 0 1px ${purple|a35}; }
+button { background-image: none; background-color: ${bg-3}; border-color: ${border}; color: ${fg-0}; }
+button:hover { background-color: ${border}; }
+button.suggested-action, button:checked { background-image: none; background-color: ${accent-fill}; color: ${on-fill}; border-color: ${purple}; }
+button.destructive-action { background-image: none; background-color: ${red}; color: ${bg-0}; }
+selection, *:selected, row:selected, .view:selected { background-color: ${accent-fill}; color: ${on-fill}; }
+menu, .popup, popover, popover.background { background-color: ${bg-2}; border-color: ${border}; }
+menuitem:hover { background-color: ${bg-3}; }
+tooltip, tooltip.background { background-color: ${bg-3}; color: ${fg-0}; border: 1px solid ${border}; }
+scale highlight, progressbar progress, switch:checked { background-image: none; background-color: ${purple}; }
+scrollbar slider { background-color: ${border}; }
+scrollbar slider:hover { background-color: ${accent-fill}; }
+notebook > header > tabs > tab:checked { box-shadow: inset 0 -2px ${purple}; }
+.sidebar, placessidebar { background-color: ${bg-0}; }
+
+button, entry, spinbutton, menu, .popup, popover, tooltip { border-radius: ${radius-sm}px; }
+window.csd, decoration { border-radius: ${radius-lg}px ${radius-lg}px 0 0; }
+row:selected, .sidebar row:selected { background-color: ${purple|a20}; color: ${fg-0}; }
+/*@if window_buttons=mac*/
+headerbar button.titlebutton { min-width: 13px; min-height: 13px; padding: 0; margin: 0 4px; border-radius: 99px; background-image: none; box-shadow: none; border: none; }
+headerbar button.titlebutton.close { background-color: ${red}; }
+headerbar button.titlebutton.minimize { background-color: ${yellow}; }
+headerbar button.titlebutton.maximize { background-color: ${green}; }
+headerbar button.titlebutton image { opacity: 0; }
+headerbar button.titlebutton:hover image { opacity: .7; }
+/*@end*/

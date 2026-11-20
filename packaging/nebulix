@@ -1,0 +1,4 @@
+#!/bin/sh
+# SPDX-License-Identifier: GPL-3.0-or-later
+export NEBULIX_DATA=/usr/share/nebulix
+exec python3 -m nebulix "$@"

@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=Nebulix
+Comment=Personalize o tema roxo do GNOME
+Comment[en]=Customize the purple GNOME theme
+Exec=nebulix gui
+Icon=io.github.nebulix.Settings
+Terminal=false
+Categories=GNOME;GTK;Settings;DesktopSettings;
+Keywords=tema;theme;dock;icons;wallpaper;
+StartupNotify=true
