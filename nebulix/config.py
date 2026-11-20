@@ -15,6 +15,7 @@ CHOICES = {
     "topbar": ("floating", "solid"),
     "dock": ("macos", "ubuntu"),
     "dock_position": ("bottom", "left", "right"),
+    "dock_zoom": ("off", "on"),
     "icons": ("whitesur", "papirus", "keep"),
     "wallpaper": ("orbit", "horizon", "circuit", "code", "gen-orbit", "gen-horizon", "gen-circuit", "gen-code", "none"),
     "wallpaper_size": ("1080p", "1440p", "4k", "ultrawide"),
@@ -22,6 +23,7 @@ CHOICES = {
 DEFAULTS = {
     "accent": "nebulix", "variant": "dark", "radius": 14, "window_buttons": "gnome", "topbar": "floating",
     "dock": "macos", "dock_position": "bottom", "dock_icon_size": 48, "dock_opacity": 75,
+    "dock_zoom": "off", "dock_zoom_factor": 160,
     "icons": "whitesur", "wallpaper": "orbit", "wallpaper_size": "4k",
     "components": list(COMPONENTS),
 }
@@ -42,7 +44,7 @@ def validate(raw: dict) -> dict:
     for k, ch in CHOICES.items():
         if cfg[k] not in ch:
             errs.append(f"{k} inválido: {cfg[k]!r} (use {', '.join(ch)})")
-    for k, lo, hi in (("radius", 6, 20), ("dock_icon_size", 32, 64), ("dock_opacity", 20, 100)):
+    for k, lo, hi in (("radius", 6, 20), ("dock_icon_size", 32, 64), ("dock_opacity", 20, 100), ("dock_zoom_factor", 120, 200)):
         if not isinstance(cfg[k], int) or isinstance(cfg[k], bool) or not lo <= cfg[k] <= hi:
             errs.append(f"{k} deve ser inteiro entre {lo} e {hi}")
     comps = cfg["components"]

@@ -10,9 +10,11 @@ import uuid
 from pathlib import Path
 
 from . import __version__, config, gen, icons, paths, palette, render, wallpapers
-from .state import State, gs
+from .state import State, gs, set_extension_enabled
 
 UT = "user-theme@gnome-shell-extensions.gcampax.github.com"
+UBUNTU_DOCK = "ubuntu-dock@ubuntu.com"
+ZOOM = "nebulix-dock-zoom@nebulix.github.io"
 DOCK = "org.gnome.shell.extensions.dash-to-dock"
 IFACE = "org.gnome.desktop.interface"
 TESTED_GNOME = ("50", "51")
@@ -125,6 +127,7 @@ def apply(cfg=None, dry=False, log=print, install_icons=False, only=None):
             st.put_tree(stage / "gnome-shell", data / "themes" / THEME / "gnome-shell")
             _shell_enable(st, dry, log)
             _dock(st, cfg, acc)
+            _dock_zoom(st, cfg, dry, log)
         if "terminal" in comps:
             st.put_text((stage / "terminal/nebulix.palette").read_text(), data / "org.gnome.Ptyxis/palettes/nebulix.palette")
             u = (gs("get", "org.gnome.Ptyxis", "default-profile-uuid") or "").strip("'")
@@ -212,6 +215,36 @@ def _dock(st, cfg, acc):
                  ("custom-theme-customize-running-dots", "true"), ("custom-theme-running-dots-color", q(acc)),
                  ("click-action", "'minimize-or-previews'")):
         st.gs_set(DOCK, k, v)
+
+
+def _dock_zoom(st, cfg, dry, log):
+    """Optional macOS-style magnification: our own extension (extensions/nebulix-dock-zoom@...) running on top of the
+    Ubuntu Dock. Off by default; turning it off disables the extension and removes its files."""
+    ext_dir, conf = paths.ext_home() / ZOOM, paths.conf_home() / "nebulix/dock-zoom.json"
+    if cfg["dock_zoom"] != "on":
+        if f"ext:{ZOOM}" in st.manifest or str(ext_dir) in st.manifest:
+            log("zoom da dock desligado")
+            set_extension_enabled(ZOOM, False, dry)
+            if not dry:
+                _forget(st, lambda e: e in (str(ext_dir), str(conf)))
+                if f"ext:{ZOOM}" in st.manifest:
+                    st.manifest.remove(f"ext:{ZOOM}")
+        return
+    if shutil.which("gnome-extensions"):
+        if UBUNTU_DOCK not in subprocess.run(["gnome-extensions", "list"], capture_output=True, text=True).stdout.split():
+            st.missing.append(("zoom da dock precisa do Ubuntu Dock (ubuntu-dock@ubuntu.com), que não está instalado",
+                               "sudo apt install gnome-shell-ubuntu-extensions"))
+    st.put_tree(paths.data_dir() / "extensions" / ZOOM, ext_dir)
+    st.put_text(json.dumps({"factor": cfg["dock_zoom_factor"] / 100}) + "\n", conf)
+    if dry:
+        return
+    known = shutil.which("gnome-extensions") and ZOOM in subprocess.run(
+        ["gnome-extensions", "list"], capture_output=True, text=True).stdout.split()
+    set_extension_enabled(ZOOM, True)
+    st.note(f"ext:{ZOOM}")
+    if shutil.which("gnome-extensions") and not known:
+        st.missing.append(("zoom da dock instalado, mas o GNOME só enxerga extensões novas ao iniciar a sessão",
+                           "saia da sessão e entre de novo (o zoom liga sozinho)"))
 
 
 def _gnome_terminal(st, stage, dry, log):

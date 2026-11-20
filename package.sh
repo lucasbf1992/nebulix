@@ -4,15 +4,15 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 V="$(python3 -c 'from nebulix import __version__ as v; print(v)')"
-REV="${DEB_REV:-3}"   # Debian revision: bump it so apt upgrades a rebuilt package of the same version
+REV="${DEB_REV:-4}"   # Debian revision: bump it so apt upgrades a rebuilt package of the same version
 DV="$V-$REV"
 python3 -m unittest discover -s tests >/dev/null
 python3 build.py >/dev/null
 rm -rf release && mkdir -p release
-SHIP=(nebulix templates palette.json images/wallpapers images/logo)
+SHIP=(nebulix templates extensions palette.json images/wallpapers images/logo)
 # ---- tarball ----
 T="release/nebulix-$V"; mkdir -p "$T/images"
-cp -r nebulix templates palette.json install.sh uninstall.sh LICENSE LICENSE-ART README.md CREDITS.md CHANGELOG.md "$T/"
+cp -r nebulix templates extensions palette.json install.sh uninstall.sh LICENSE LICENSE-ART README.md CREDITS.md CHANGELOG.md "$T/"
 cp -r images/wallpapers images/logo "$T/images/"
 find "$T" -name __pycache__ -prune -exec rm -rf {} +
 tar --sort=name --owner=0 --group=0 --numeric-owner --mtime='2026-01-01' -C release -cJf "release/nebulix-$V.tar.xz" "nebulix-$V"
@@ -24,7 +24,7 @@ mkdir -p "$D/DEBIAN" "$D/usr/bin" "$D/usr/lib/python3/dist-packages" "$S/nebulix
   "$S/backgrounds/nebulix" "$S/gnome-background-properties" "$S/doc/nebulix" "$S/applications" "$S/icons/hicolor/scalable/apps"
 cp -r nebulix "$D/usr/lib/python3/dist-packages/nebulix"
 find "$D" -name __pycache__ -prune -exec rm -rf {} +
-cp -r templates palette.json "$S/nebulix/"; cp -r images/wallpapers images/logo "$S/nebulix/images/"
+cp -r templates extensions palette.json "$S/nebulix/"; cp -r images/wallpapers images/logo "$S/nebulix/images/"
 install -m755 packaging/nebulix "$D/usr/bin/nebulix"
 cp packaging/io.github.nebulix.Settings.desktop "$S/applications/"
 cp dist/logo/nebulix.svg "$S/icons/hicolor/scalable/apps/io.github.nebulix.Settings.svg"
@@ -64,6 +64,7 @@ Nebulix instalado. Nada foi alterado na sua sessão ainda:
   nebulix apply --dry-run   mostra o que mudaria
   nebulix apply             aplica o tema ao seu usuário
   nebulix doctor            mostra requisitos e como instalar
+  nebulix config set dock_zoom=on   zoom da dock (opcional; sair e entrar na sessão na 1a vez)
   nebulix reset             volta ao padrão do Ubuntu (rode ANTES de remover o pacote)
 MSG
 fi
@@ -94,7 +95,7 @@ Section: gnome
 Priority: optional
 Installed-Size: $SIZE
 Depends: python3 (>= 3.11), python3-gi, gir1.2-gtk-4.0, gir1.2-adw-1, gnome-shell (>= 50~), gnome-shell-extensions
-Recommends: papirus-icon-theme, librsvg2-common
+Recommends: papirus-icon-theme, librsvg2-common, gnome-shell-ubuntu-extensions
 Suggests: starship, fastfetch, fonts-inter
 Homepage: https://github.com/lucasbf1992/nebulix
 Description: Nebulix - customizable dark purple theme for GNOME

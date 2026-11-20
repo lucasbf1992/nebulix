@@ -30,7 +30,7 @@ nebulix config set accent=magenta variant=darker radius=10
 nebulix config set window_buttons=mac topbar=solid dock_position=left
 nebulix config set wallpaper=gen-orbit        # versões geradas seguem a cor de destaque
 ```
-Chaves: `accent` (nebulix, magenta, cyan, blue, green, amber ou `#RRGGBB`), `variant` (dark, darker), `radius` (6 a 20), `window_buttons` (gnome, mac), `topbar` (floating, solid), `dock` (macos, ubuntu), `dock_position` (bottom, left, right), `dock_icon_size`, `dock_opacity`, `icons` (whitesur, papirus, keep), `wallpaper`, `components`. O arquivo fica em `~/.config/nebulix/config.toml`.
+Chaves: `accent` (nebulix, magenta, cyan, blue, green, amber ou `#RRGGBB`), `variant` (dark, darker), `radius` (6 a 20), `window_buttons` (gnome, mac), `topbar` (floating, solid), `dock` (macos, ubuntu), `dock_position` (bottom, left, right), `dock_icon_size`, `dock_opacity`, `dock_zoom` (off, on), `dock_zoom_factor` (120 a 200, em %), `icons` (whitesur, papirus, keep), `wallpaper`, `components`. O arquivo fica em `~/.config/nebulix/config.toml`.
 
 ## Voltar ao padrão
 
@@ -43,7 +43,7 @@ Os dois também estão na aba **Restaurar** do app. Depois, `sudo apt remove neb
 
 ## Limitações
 - libadwaita só aceita troca de cores; apps Qt/KDE e snaps podem ignorar o tema GTK.
-- O Ubuntu Dock não tem ampliação nem desfoque como o macOS (o `doctor` sugere a extensão Blur my Shell).
+- O Ubuntu Dock não tem desfoque como o macOS (o `doctor` sugere a extensão Blur my Shell). O zoom ao passar o mouse é opcional (`dock_zoom=on`): extensão `nebulix-dock-zoom` do Nebulix, que exige o Ubuntu Dock e, na primeira ativação, sair e entrar na sessão. A parte ampliada do ícone que passa da borda da dock não recebe cliques.
 - O CSS do Shell passa no parser do St, mas ainda não foi conferido visualmente num Shell real; abra uma issue com screenshot se algo ficar estranho.
 - O tema do VS Code é copiado para `~/.vscode/extensions`; reinicie o editor.
 

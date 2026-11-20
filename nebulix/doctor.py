@@ -3,8 +3,8 @@
 import shutil
 import subprocess
 
-from . import icons
-from .apply import TESTED_GNOME, UT, gnome_major
+from . import config, icons
+from .apply import TESTED_GNOME, UBUNTU_DOCK, UT, ZOOM, gnome_major
 
 
 def _run(*a):
@@ -24,6 +24,20 @@ def check():
             out.append(("warn", "extensão User Themes ausente (necessária para o tema do Shell)", "sudo apt install gnome-shell-extensions"))
         else:
             out.append(("ok", "extensão User Themes instalada", ""))
+        try:
+            zoom_on = config.load()["dock_zoom"] == "on"
+        except Exception:
+            zoom_on = False
+        if zoom_on:
+            if UBUNTU_DOCK not in lst:
+                out.append(("warn", "zoom da dock ligado, mas o Ubuntu Dock não está instalado", "sudo apt install gnome-shell-ubuntu-extensions"))
+            elif ZOOM not in lst:
+                out.append(("warn", "zoom da dock ligado, mas a extensão nebulix-dock-zoom ainda não foi detectada pelo GNOME",
+                            "rode `nebulix apply` e depois saia da sessão e entre de novo"))
+            else:
+                en = _run("gnome-extensions", "list", "--enabled").split()
+                out.append(("ok", "zoom da dock ativo (nebulix-dock-zoom)", "") if ZOOM in en
+                           else ("warn", "extensão nebulix-dock-zoom instalada, mas desativada", "nebulix apply"))
         if not any("blur-my-shell" in e for e in lst):
             out.append(("info", "opcional: desfoque do fundo da dock/barra (Blur my Shell)", "gnome-extensions-app → Blur my Shell"))
     out.append(("ok", "ícones WhiteSur instalados", "") if icons.has_theme(icons.BASE)

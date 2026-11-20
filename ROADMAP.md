@@ -12,7 +12,7 @@ Segundo tema, escuro e neutro, próximo ao macOS, ao lado do Nebulix roxo. Escol
 - Mockup aprovado na conversa em 2026-11-20.
 
 ## Próximos passos
-- **Zoom dos ícones da dock ao passar o mouse (estilo macOS).** O Ubuntu Dock não tem magnificação. Opções a avaliar: uma extensão de dock com animação de zoom (ex.: Dash2Dock Lite), mantendo o visual Nebulix por cima, ou escrever uma extensão própria. Decidir também se a dock do Nebulix continua o Ubuntu Dock (padrão) com a extensão como opção. Registrado pelo autor em 2026-11-20.
+- **Zoom dos ícones da dock ao passar o mouse (estilo macOS).** Implementado como extensão própria `nebulix-dock-zoom` sobre o Ubuntu Dock (opcional, `dock_zoom=on`). Falta validar na sessão real. Ideias seguintes: fundo da dock crescer com o zoom, cliques na parte ampliada, zoom em dock auto-ocultável, pulo ao abrir app.
 - Validar no Shell real: Atividades, calendário, notificações, tela de bloqueio.
 - Passos de validação pendentes: ícones WhiteSur, wallpaper e terminal/editor na sessão real.
 - Release `v0.2.0` no GitHub (com `.deb`, `.tar.xz` e `SHA256SUMS`) depois da validação.

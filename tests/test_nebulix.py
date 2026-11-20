@@ -196,3 +196,107 @@ class TestArtWallpaper(Sandbox):
         f = self.home / ".local/share/backgrounds/nebulix/nebulix-orbit.png"
         self.assertEqual(f.read_bytes(), (ROOT / "images/wallpapers/nebulix-orbit.png").read_bytes())
         self.assertIn("nebulix-orbit.png", self.gs()["org.gnome.desktop.background|picture-uri"])
+
+
+FAKE_EXT = '''#!/usr/bin/env bash
+# lists the Ubuntu Dock and User Themes; the zoom extension only appears once FAKE_ZOOM_KNOWN exists
+if [ "$1" = list ] && [ -z "$2" ]; then
+  echo ubuntu-dock@ubuntu.com; echo user-theme@gnome-shell-extensions.gcampax.github.com
+  [ -e "$FAKE_STATE/zoom_known" ] && echo nebulix-dock-zoom@nebulix.github.io
+fi
+exit 0
+'''
+ZOOM_UUID = "nebulix-dock-zoom@nebulix.github.io"
+
+
+class TestDockZoom(Sandbox):
+    def setUp(self):
+        super().setUp()
+        (self.tmp / "bin/gnome-extensions").write_text(FAKE_EXT)
+
+    def cfg(self, **kw):
+        from nebulix import config
+        base = {"wallpaper": "none", "dock_zoom": "on", "dock_zoom_factor": 150}
+        base.update(kw)
+        return config.validate(base)
+
+    def enabled(self):
+        import re
+        return re.findall(r"'([^']+)'", self.gs().get("org.gnome.shell|enabled-extensions", ""))
+
+    def test_config_validation(self):
+        from nebulix import config
+        self.assertEqual(config.validate({})["dock_zoom"], "off")
+        for bad in ({"dock_zoom": "maybe"}, {"dock_zoom_factor": 50}, {"dock_zoom_factor": 300}):
+            with self.assertRaises(ValueError):
+                config.validate(bad)
+
+    def test_off_by_default_installs_nothing(self):
+        from nebulix.apply import apply
+        apply(self.cfg(dock_zoom="off"), log=lambda *_: None)
+        self.assertFalse((self.home / ".local/share/gnome-shell/extensions" / ZOOM_UUID).exists())
+        self.assertNotIn(ZOOM_UUID, self.enabled())
+
+    def test_on_installs_enables_and_asks_relogin_once(self):
+        import json
+        from nebulix.apply import apply
+        st = apply(self.cfg(), log=lambda *_: None)
+        d = self.home / ".local/share/gnome-shell/extensions" / ZOOM_UUID
+        self.assertTrue((d / "extension.js").exists() and (d / "metadata.json").exists())
+        self.assertEqual(json.loads((self.home / ".config/nebulix/dock-zoom.json").read_text()), {"factor": 1.5})
+        self.assertIn(ZOOM_UUID, self.enabled())
+        self.assertTrue(any("sair" in f or "saia" in f for _m, f in st.missing))
+        (self.tmp / "state/zoom_known").write_text("")
+        st = apply(self.cfg(dock_zoom_factor=180), log=lambda *_: None)
+        self.assertEqual([m for m, _f in st.missing if "zoom" in m], [])
+        self.assertEqual(json.loads((self.home / ".config/nebulix/dock-zoom.json").read_text()), {"factor": 1.8})
+        self.assertEqual(self.enabled().count(ZOOM_UUID), 1)
+
+    def test_turning_off_removes_everything(self):
+        from nebulix.apply import apply
+        apply(self.cfg(), log=lambda *_: None)
+        apply(self.cfg(dock_zoom="off"), log=lambda *_: None)
+        self.assertFalse((self.home / ".local/share/gnome-shell/extensions" / ZOOM_UUID).exists())
+        self.assertFalse((self.home / ".config/nebulix/dock-zoom.json").exists())
+        self.assertNotIn(ZOOM_UUID, self.enabled())
+
+    def test_undo_and_reset_disable_and_remove(self):
+        from nebulix.apply import apply
+        from nebulix.restore import restore
+        for mode in ("undo", "reset"):
+            apply(self.cfg(), log=lambda *_: None)
+            self.assertIn(ZOOM_UUID, self.enabled())
+            restore(mode, log=lambda *_: None)
+            self.assertNotIn(ZOOM_UUID, self.enabled())
+            self.assertFalse(list(self.home.rglob("nebulix-dock-zoom*")), mode)
+            self.assertFalse((self.home / ".config/nebulix/dock-zoom.json").exists())
+
+    def test_keeps_other_enabled_extensions(self):
+        from nebulix.apply import apply
+        from nebulix.restore import restore
+        (self.tmp / "state/gs.json").write_text(json.dumps({"org.gnome.shell|enabled-extensions": "['a@b', 'c@d']"}))
+        apply(self.cfg(), log=lambda *_: None)
+        self.assertEqual(self.enabled(), ["a@b", "c@d", ZOOM_UUID])
+        restore("undo", log=lambda *_: None)
+        self.assertEqual(self.enabled(), ["a@b", "c@d"])
+
+    def test_missing_ubuntu_dock_is_reported(self):
+        from nebulix.apply import apply
+        (self.tmp / "bin/gnome-extensions").write_text("#!/bin/sh\nexit 0\n")
+        st = apply(self.cfg(), log=lambda *_: None)
+        self.assertTrue(any("Ubuntu Dock" in m for m, _ in st.missing))
+
+    def test_doctor_reports_zoom_state(self):
+        from nebulix import config, doctor
+        config.save(self.cfg())
+        msgs = [m for _l, m, _f in doctor.check()]
+        self.assertTrue(any("nebulix-dock-zoom" in m for m in msgs), msgs)
+
+    def test_extension_files_are_valid(self):
+        import json
+        d = ROOT / "extensions" / ZOOM_UUID
+        meta = json.loads((d / "metadata.json").read_text())
+        self.assertEqual(meta["uuid"], ZOOM_UUID)
+        self.assertIn("50", meta["shell-version"])
+        self.assertIn("SPDX-License-Identifier: GPL-3.0-or-later", (d / "extension.js").read_text())
+

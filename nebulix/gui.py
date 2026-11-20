@@ -151,11 +151,16 @@ class SettingsWindow(Adw.PreferencesWindow):
         self.combo(g2, "Barra superior", "topbar")
         self.spin(g2, "Cantos arredondados", "radius", 6, 20, "em pixels")
         page.add(g2)
-        g3 = Adw.PreferencesGroup(title="Dock", description="Requer o Ubuntu Dock (padrão do Ubuntu). A dock não tem ampliação nem desfoque como no macOS.")
+        g3 = Adw.PreferencesGroup(title="Dock", description="Requer o Ubuntu Dock (padrão do Ubuntu). O desfoque do fundo não existe como no macOS; o zoom é opcional.")
         self.combo(g3, "Estilo", "dock")
         self.combo(g3, "Posição", "dock_position")
         self.spin(g3, "Tamanho dos ícones", "dock_icon_size", 32, 64)
         self.spin(g3, "Opacidade do fundo", "dock_opacity", 20, 100, "em %")
+        zr = Adw.SwitchRow(title="Zoom ao passar o mouse", subtitle="Estilo macOS. Instala a extensão nebulix-dock-zoom (precisa do Ubuntu Dock). Na primeira vez, saia da sessão e entre de novo.",
+                           active=self.cfg["dock_zoom"] == "on")
+        zr.connect("notify::active", lambda r, _p: self.set("dock_zoom", "on" if r.get_active() else "off"))
+        g3.add(zr)
+        self.spin(g3, "Intensidade do zoom", "dock_zoom_factor", 120, 200, "em % (160 = 1,6x)")
         page.add(g3)
         return page
 
