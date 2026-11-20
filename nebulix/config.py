@@ -14,7 +14,7 @@ CHOICES = {
     "window_buttons": ("gnome", "mac"),
     "topbar": ("floating", "solid"),
     "dock": ("macos", "ubuntu"),
-    "dock_position": ("bottom", "left"),
+    "dock_position": ("bottom", "left", "right"),
     "icons": ("whitesur", "papirus", "keep"),
     "wallpaper": ("orbit", "horizon", "circuit", "code", "gen-orbit", "gen-horizon", "gen-circuit", "gen-code", "none"),
     "wallpaper_size": ("1080p", "1440p", "4k", "ultrawide"),

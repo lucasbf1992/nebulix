@@ -148,18 +148,18 @@ def apply(cfg=None, dry=False, log=print, install_icons=False, only=None):
         if "icons" in comps:
             _icons(st, cfg, t, stage, dry, install_icons, log)
         st.save()
-        _report_missing(st, log)
+        _report_missing(st, log, dry)
     finally:
         shutil.rmtree(stage, ignore_errors=True)
     log("ok" if not dry else "dry-run: nada foi alterado.")
     return st
 
 
-def _report_missing(st, log):
+def _report_missing(st, log, dry=False):
     if not st.missing:
         return
     log("")
-    log("┌─ Requisitos faltando (o resto foi aplicado) ─────────────")
+    log("┌─ Requisitos faltando (o resto " + ("seria aplicado" if dry else "foi aplicado") + ") ─────────")
     for msg, fix in st.missing:
         log(f"│ ! {msg}")
         log(f"│   → {fix}")
@@ -205,7 +205,7 @@ def _dock(st, cfg, acc):
         for k in DOCK_KEYS:
             st.gs_release(DOCK, k)
         return
-    pos = "'BOTTOM'" if cfg["dock_position"] == "bottom" else "'LEFT'"
+    pos = q(cfg["dock_position"].upper())
     for k, v in (("dock-position", pos), ("extend-height", "false"), ("dash-max-icon-size", str(cfg["dock_icon_size"])),
                  ("transparency-mode", "'FIXED'"), ("background-opacity", f"{cfg['dock_opacity'] / 100:.2f}"),
                  ("apply-custom-theme", "false"), ("show-apps-at-top", "false"), ("running-indicator-style", "'DOTS'"),

@@ -18,7 +18,7 @@ LABELS = {
     "window_buttons": {"gnome": "GNOME (à direita)", "mac": "Semáforo macOS (à esquerda)"},
     "topbar": {"floating": "Flutuante (pílulas)", "solid": "Sólida"},
     "dock": {"macos": "Estilo macOS (flutuante, centralizada)", "ubuntu": "Não alterar (padrão do Ubuntu)"},
-    "dock_position": {"bottom": "Embaixo", "left": "Esquerda"},
+    "dock_position": {"bottom": "Embaixo", "left": "Esquerda", "right": "Direita"},
     "icons": {"whitesur": "Estilo macOS (WhiteSur + pastas Nebulix)", "papirus": "Papirus-Dark", "keep": "Não alterar"},
     "wallpaper": {"orbit": "Órbita", "horizon": "Horizonte", "circuit": "Circuito", "code": "Código", "gen-orbit": "Órbita (gerada, segue o destaque)", "gen-horizon": "Horizonte (gerado, segue o destaque)", "gen-circuit": "Circuito (gerado, segue o destaque)", "gen-code": "Código (gerado, segue o destaque)", "none": "Não alterar"},
     "wallpaper_size": {"1080p": "1080p", "1440p": "1440p", "4k": "4K", "ultrawide": "Ultrawide 21:9"},

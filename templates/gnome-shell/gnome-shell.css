@@ -5,14 +5,15 @@
 
 /* ---- top bar ---- */
 /*@if topbar=floating*/
-#panel { background-color: transparent; box-shadow: none; font-weight: 600; height: 34px; }
+/* Yaru-dark sets #panel { background-color: #131313 !important }, so ours needs !important too */
+#panel, #panel:overview { background-color: transparent !important; box-shadow: none; font-weight: 600; height: 34px; }
 #panel .panel-button { color: ${fg-0}; background-color: ${bg-1|a85}; border: 1px solid ${border}; border-radius: 99px; margin: 3px 3px; padding: 0 10px; }
 #panel .panel-button:hover, #panel .panel-button:focus { background-color: ${bg-3}; }
 #panel .panel-button:active, #panel .panel-button:checked { background-color: ${accent-fill}; color: ${on-fill}; }
 #panel .panel-button.clock-display, #panel .panel-button.clock-display:hover { border-color: ${border}; }
 /*@end*/
 /*@if topbar=solid*/
-#panel { background-color: ${bg-0}; box-shadow: 0 1px 0 ${bg-2}; font-weight: 600; }
+#panel, #panel:overview { background-color: ${bg-0} !important; box-shadow: 0 1px 0 ${bg-2}; font-weight: 600; }
 #panel .panel-button { color: ${fg-1}; border-radius: ${radius-sm}px; }
 #panel .panel-button:hover, #panel .panel-button:focus { background-color: ${bg-2}; color: ${fg-0}; }
 #panel .panel-button:active, #panel .panel-button:checked { background-color: ${bg-3}; color: ${fg-0}; }
@@ -61,18 +62,18 @@
 .button:default, .modal-dialog-linked-button:default { background-color: ${purple}; color: ${on-accent}; }
 
 /*@if dock=macos*/
-/* ---- dock (Ubuntu Dock / dash-to-dock), macOS style ---- */
-#dashtodockContainer #dash, #dashtodockContainer .dash-background { background-color: transparent; }
-#dashtodockContainer .dash-background, #dashtodockContainer #dash .dash-background {
-  background-color: ${bg-1|a80}; border: 1px solid ${border}; border-radius: ${dock-radius}px; padding: 6px;
+/* ---- dock (Ubuntu Dock / dash-to-dock), macOS style. Yaru styles it with more specific selectors, hence !important ---- */
+#dashtodockContainer #dash, #dashtodockContainer #dash .dash-background, #dashtodockContainer .dash-background {
+  background: ${bg-1|a80} !important; background-color: ${bg-1|a80} !important;
+  border: 1px solid ${border} !important; border-radius: ${dock-radius}px !important; padding: 6px !important; margin: 0 !important;
 }
+#dashtodockContainer #dash { border: none !important; background: transparent !important; background-color: transparent !important; padding: 0 !important; }
 #dashtodockContainer .dash-item-container .app-well-app .overview-icon,
 #dashtodockContainer .dash-item-container .show-apps .overview-icon { border-radius: ${radius}px; padding: 4px; background-color: transparent; }
 #dashtodockContainer .dash-item-container .app-well-app:hover .overview-icon,
 #dashtodockContainer .dash-item-container .app-well-app:focus .overview-icon,
 #dashtodockContainer .dash-item-container .show-apps:hover .overview-icon { background-color: ${bg-3|a70}; }
 #dashtodockContainer .dash-item-container .app-well-app:active .overview-icon { background-color: ${purple|a30}; }
-#dashtodockContainer .dash-separator { background-color: ${border}; width: 1px; margin: 8px 6px; }
-#dashtodockContainer .app-well-app-running-dot { background-color: ${purple}; }
+#dashtodockContainer .dash-separator { background-color: ${border}; }
 .dash-label { background-color: ${bg-2}; border: 1px solid ${border}; color: ${fg-0}; border-radius: ${radius-sm}px; padding: 3px 10px; }
 /*@end*/
