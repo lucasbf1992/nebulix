@@ -1,12 +1,12 @@
 [Desktop Entry]
 Type=X-GNOME-Metatheme
-Name=Nebulix-Dark
-Comment=Dark purple theme for GNOME
+Name=${theme-name}
+Comment=${theme-label} — Nebulix theme for GNOME
 Encoding=UTF-8
 
 [X-GNOME-Metatheme]
-GtkTheme=Nebulix-Dark
-MetacityTheme=Nebulix-Dark
-IconTheme=Papirus-Dark
+GtkTheme=${theme-name}
+MetacityTheme=${theme-name}
+IconTheme=Papirus${scheme-suffix}
 CursorTheme=Adwaita
 ButtonLayout=:minimize,maximize,close

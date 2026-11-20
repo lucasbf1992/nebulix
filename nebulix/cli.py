@@ -3,14 +3,15 @@
 import argparse
 import sys
 
-from . import __version__, config, doctor, paths
+from . import __version__, config, doctor, paths, themes
 from .apply import apply
 from .restore import restore
 
-HELP = """nebulix {v} — tema roxo escuro para GNOME
+HELP = """nebulix {v} — temas para GNOME (Nebulix, macOS Dark, macOS Light, Nebulix Light)
 
   nebulix                      abre o app de personalização
   nebulix apply [--dry-run]    aplica a configuração atual   (alias: install)
+  nebulix theme [NOME]         lista os temas ou aplica um (nebulix | macos-dark | macos-light | nebulix-light)
   nebulix config list|get K|set K=V ...   ver/alterar (aplica ao salvar, use --no-apply p/ não aplicar)
   nebulix status               mostra config e o que está instalado
   nebulix undo [--dry-run]     volta ao que era antes do Nebulix        (alias: uninstall)
@@ -41,6 +42,8 @@ def main(argv=None):
         restore("reset", dry=dry, remove_icons="--remove-icons" in rest)
     elif cmd == "config":
         return _config(rest, dry)
+    elif cmd == "theme":
+        return _theme(rest, dry)
     elif cmd == "wallpaper":
         return _config([f"set", f"wallpaper={rest[0]}"] if rest else ["get", "wallpaper"], dry)
     elif cmd == "status":
@@ -50,8 +53,8 @@ def main(argv=None):
             print({"ok": "✓", "warn": "!", "info": "·"}[lvl], msg + (f"\n    → {fix}" if fix else ""))
     elif cmd == "icons" and rest[:1] == ["install"]:
         from . import icons
-        icons.ensure_whitesur(print)
         c = config.load()
+        icons.ensure_whitesur(print, c["theme"])
         c["icons"] = "whitesur"
         config.save(c)
         apply(c, only=["icons"])
@@ -93,6 +96,27 @@ def _config(rest, dry):
         return 0
     print("uso: nebulix config list | get CHAVE | set CHAVE=VALOR ...", file=sys.stderr)
     return 2
+
+
+def _theme(rest, dry):
+    no_apply = "--no-apply" in rest
+    rest = [r for r in rest if r != "--no-apply"]
+    cfg = config.load()
+    if not rest:
+        for tid in themes.ids():
+            th = themes.get(tid)
+            print(f"{'*' if tid == cfg['theme'] else ' '} {tid:14s} {th['label']}")
+        return 0
+    try:
+        new = config.apply_theme(cfg, rest[0])
+    except ValueError as e:
+        print(f"erro: {e}", file=sys.stderr)
+        return 2
+    if not dry:
+        config.save(new)
+    if not no_apply:
+        apply(new, dry=dry)
+    return 0
 
 
 def _status():

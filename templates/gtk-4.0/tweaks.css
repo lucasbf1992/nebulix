@@ -15,8 +15,8 @@ headerbar { box-shadow: inset 0 -1px ${border}; }
 windowcontrols button { min-width: 13px; min-height: 13px; padding: 0; margin: 0 4px; border-radius: 99px; box-shadow: none; }
 windowcontrols button image { opacity: 0; -gtk-icon-size: 8px; }
 windowcontrols button:hover image { opacity: .7; }
-windowcontrols button.close { background-color: ${red}; color: ${bg-0}; }
-windowcontrols button.minimize { background-color: ${yellow}; color: ${bg-0}; }
-windowcontrols button.maximize { background-color: ${green}; color: ${bg-0}; }
+windowcontrols button.close { background-color: ${tl-red}; color: ${ink-dark}; }
+windowcontrols button.minimize { background-color: ${tl-yellow}; color: ${ink-dark}; }
+windowcontrols button.maximize { background-color: ${tl-green}; color: ${ink-dark}; }
 windowcontrols:backdrop button { background-color: ${border}; }
 /*@end*/

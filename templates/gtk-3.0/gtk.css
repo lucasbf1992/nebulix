@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
-/* ${name} ${version} — GTK3 theme. Reuses GTK's built-in Adwaita dark sheet (loaded from
+/* ${name} ${version} — GTK3 theme. Reuses GTK's built-in Adwaita ${scheme} sheet (loaded from
    libgtk resources at runtime, nothing is copied) and layers the Nebulix palette on top. */
-@import url("resource:///org/gtk/libgtk/theme/Adwaita/gtk-contained-dark.css");
+@import url("resource:///org/gtk/libgtk/theme/Adwaita/gtk-contained${scheme-suffix}.css");
 
 @define-color theme_bg_color ${bg-1};
 @define-color theme_fg_color ${fg-0};
@@ -21,7 +21,7 @@
 @define-color insensitive_fg_color ${fg-2};
 @define-color insensitive_base_color ${bg-1};
 @define-color content_view_bg ${bg-0};
-@define-color link_color ${cyan};
+@define-color link_color ${link};
 @define-color visited_link_color ${magenta};
 @define-color warning_color ${yellow};
 @define-color error_color ${red};
@@ -38,7 +38,7 @@ entry:focus, spinbutton:focus { border-color: ${purple}; box-shadow: 0 0 0 1px $
 button { background-image: none; background-color: ${bg-3}; border-color: ${border}; color: ${fg-0}; }
 button:hover { background-color: ${border}; }
 button.suggested-action, button:checked { background-image: none; background-color: ${accent-fill}; color: ${on-fill}; border-color: ${purple}; }
-button.destructive-action { background-image: none; background-color: ${red}; color: ${bg-0}; }
+button.destructive-action { background-image: none; background-color: ${red}; color: ${on-red}; }
 selection, *:selected, row:selected, .view:selected { background-color: ${accent-fill}; color: ${on-fill}; }
 menu, .popup, popover, popover.background { background-color: ${bg-2}; border-color: ${border}; }
 menuitem:hover { background-color: ${bg-3}; }
@@ -54,9 +54,9 @@ window.csd, decoration { border-radius: ${radius-lg}px ${radius-lg}px 0 0; }
 row:selected, .sidebar row:selected { background-color: ${purple|a20}; color: ${fg-0}; }
 /*@if window_buttons=mac*/
 headerbar button.titlebutton { min-width: 13px; min-height: 13px; padding: 0; margin: 0 4px; border-radius: 99px; background-image: none; box-shadow: none; border: none; }
-headerbar button.titlebutton.close { background-color: ${red}; }
-headerbar button.titlebutton.minimize { background-color: ${yellow}; }
-headerbar button.titlebutton.maximize { background-color: ${green}; }
+headerbar button.titlebutton.close { background-color: ${tl-red}; }
+headerbar button.titlebutton.minimize { background-color: ${tl-yellow}; }
+headerbar button.titlebutton.maximize { background-color: ${tl-green}; }
 headerbar button.titlebutton image { opacity: 0; }
 headerbar button.titlebutton:hover image { opacity: .7; }
 /*@end*/

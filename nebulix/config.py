@@ -3,42 +3,57 @@
 import re
 import tomllib
 
-from . import paths
+from . import paths, themes
 
-ACCENTS = {"nebulix": "#A66BFF", "magenta": "#FF4FD8", "cyan": "#3BE8E8",
-           "blue": "#7C8CFF", "green": "#5CF2A0", "amber": "#F5D76E"}
-GNOME_ACCENT = {"nebulix": "purple", "magenta": "pink", "cyan": "teal", "blue": "blue", "green": "green", "amber": "yellow"}
 COMPONENTS = ("gtk", "shell", "terminal", "starship", "fastfetch", "btop", "vscode", "nvim", "wallpaper", "icons")
 CHOICES = {
+    "theme": ("nebulix", "macos-dark", "macos-light", "nebulix-light"),
     "variant": ("dark", "darker"),
     "window_buttons": ("gnome", "mac"),
-    "topbar": ("floating", "solid"),
+    "topbar": ("floating", "solid", "translucent"),
     "dock": ("macos", "ubuntu"),
     "dock_position": ("bottom", "left", "right"),
     "icons": ("whitesur", "papirus", "keep"),
+    "font": ("auto", "keep"),
+    "vscode_theme": ("keep", "follow", "nebulix", "macos-dark", "macos-light", "nebulix-light"),
     "wallpaper": ("orbit", "horizon", "circuit", "code", "gen-orbit", "gen-horizon", "gen-circuit", "gen-code", "none"),
     "wallpaper_size": ("1080p", "1440p", "4k", "ultrawide"),
 }
 DEFAULTS = {
-    "accent": "nebulix", "variant": "dark", "radius": 14, "window_buttons": "gnome", "topbar": "floating",
+    "theme": "nebulix", "accent": "auto", "variant": "dark", "radius": 14, "window_buttons": "gnome", "topbar": "floating",
     "dock": "macos", "dock_position": "bottom", "dock_icon_size": 48, "dock_opacity": 75,
-    "icons": "whitesur", "wallpaper": "orbit", "wallpaper_size": "4k",
+    "icons": "whitesur", "font": "auto", "vscode_theme": "keep", "wallpaper": "orbit", "wallpaper_size": "4k",
     "components": list(COMPONENTS),
 }
 
 
 def accent_hex(cfg) -> str:
-    a = cfg["accent"]
-    return ACCENTS.get(a, a).upper()
+    return themes.accent_hex(cfg["theme"], cfg["accent"])
+
+
+def gnome_accent(cfg) -> str:
+    return themes.gnome_accent(cfg["theme"], cfg["accent"])
+
+
+def apply_theme(cfg: dict, name: str) -> dict:
+    """Return cfg with the theme's package of values applied (accent back to the theme default)."""
+    name = themes.resolve(name)
+    new = dict(cfg)
+    new.update({k: v for k, v in themes.get(name)["package"].items() if k in themes.PACKAGE_KEYS})
+    new["theme"], new["accent"] = name, "auto"
+    return validate(new)
 
 
 def validate(raw: dict) -> dict:
     cfg = dict(DEFAULTS)
     cfg.update({k: v for k, v in raw.items() if k in DEFAULTS})
     errs = []
+    if cfg["theme"] not in CHOICES["theme"]:
+        raise ValueError(f"theme inválido: {cfg['theme']!r} (use {', '.join(CHOICES['theme'])})")
     a = cfg["accent"]
-    if a not in ACCENTS and not (isinstance(a, str) and re.fullmatch(r"#[0-9A-Fa-f]{6}", a)):
-        errs.append(f"accent inválido: {a!r} (use {', '.join(ACCENTS)} ou #RRGGBB)")
+    names = themes.accent_names(cfg["theme"])
+    if a != "auto" and a not in names and not (isinstance(a, str) and re.fullmatch(r"#[0-9A-Fa-f]{6}", a)):
+        errs.append(f"accent inválido: {a!r} (use auto, {', '.join(names)} ou #RRGGBB)")
     for k, ch in CHOICES.items():
         if cfg[k] not in ch:
             errs.append(f"{k} inválido: {cfg[k]!r} (use {', '.join(ch)})")

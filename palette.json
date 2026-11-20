@@ -1,15 +1,389 @@
 {
   "name": "Nebulix",
-  "version": "0.2.0",
-  "base": {
-    "bg-0": "#0B0812", "bg-1": "#120D1F", "bg-2": "#1B1430", "bg-3": "#261C42",
-    "border": "#3A2C63",
-    "fg-0": "#ECE6FF", "fg-1": "#B3A8D6", "fg-2": "#6F6496",
-    "purple": "#A66BFF", "purple-dim": "#7A45E6", "magenta": "#FF4FD8", "cyan": "#3BE8E8",
-    "red": "#FF5C8A", "green": "#5CF2A0", "yellow": "#F5D76E", "blue": "#7C8CFF"
-  },
-  "ansi": {
-    "normal": ["#1B1430","#FF5C8A","#5CF2A0","#F5D76E","#7C8CFF","#C77DFF","#3BE8E8","#B3A8D6"],
-    "bright": ["#3A2C63","#FF85A8","#8AF7BE","#FAE59B","#A3AEFF","#DCA8FF","#7FF2F2","#ECE6FF"]
+  "version": "0.3.0",
+  "themes": {
+    "nebulix": {
+      "label": "Nebulix (roxo escuro)",
+      "scheme": "dark",
+      "default_accent": "nebulix",
+      "gnome_accent_default": "purple",
+      "solid_accent": false,
+      "link": "cyan",
+      "wallpaper_from": "nebulix",
+      "icons": {
+        "color": "purple",
+        "overlay": true
+      },
+      "package": {
+        "window_buttons": "gnome",
+        "topbar": "floating",
+        "radius": 14,
+        "icons": "whitesur",
+        "dock": "macos",
+        "dock_opacity": 75,
+        "variant": "dark"
+      },
+      "base": {
+        "bg-0": "#0B0812",
+        "bg-1": "#120D1F",
+        "bg-2": "#1B1430",
+        "bg-3": "#261C42",
+        "border": "#3A2C63",
+        "fg-0": "#ECE6FF",
+        "fg-1": "#B3A8D6",
+        "fg-2": "#6F6496",
+        "purple": "#A66BFF",
+        "magenta": "#FF4FD8",
+        "cyan": "#3BE8E8",
+        "red": "#FF5C8A",
+        "green": "#5CF2A0",
+        "yellow": "#F5D76E",
+        "blue": "#7C8CFF"
+      },
+      "darker": {
+        "bg-0": "#000000",
+        "bg-1": "#07050C",
+        "bg-2": "#100B1C",
+        "bg-3": "#1A1330",
+        "border": "#2A2048"
+      },
+      "accents": {
+        "nebulix": {
+          "hex": "#A66BFF",
+          "gnome": "purple"
+        },
+        "magenta": {
+          "hex": "#FF4FD8",
+          "gnome": "pink"
+        },
+        "cyan": {
+          "hex": "#3BE8E8",
+          "gnome": "teal"
+        },
+        "blue": {
+          "hex": "#7C8CFF",
+          "gnome": "blue"
+        },
+        "green": {
+          "hex": "#5CF2A0",
+          "gnome": "green"
+        },
+        "amber": {
+          "hex": "#F5D76E",
+          "gnome": "yellow"
+        }
+      },
+      "ansi": {
+        "normal": [
+          "#1B1430",
+          "#FF5C8A",
+          "#5CF2A0",
+          "#F5D76E",
+          "#7C8CFF",
+          "#C77DFF",
+          "#3BE8E8",
+          "#B3A8D6"
+        ],
+        "bright": [
+          "#3A2C63",
+          "#FF85A8",
+          "#8AF7BE",
+          "#FAE59B",
+          "#A3AEFF",
+          "#DCA8FF",
+          "#7FF2F2",
+          "#ECE6FF"
+        ]
+      }
+    },
+    "macos-dark": {
+      "label": "macOS Dark",
+      "scheme": "dark",
+      "default_accent": "blue",
+      "gnome_accent_default": "blue",
+      "solid_accent": true,
+      "link": "accent",
+      "wallpaper_from": "macos-dark",
+      "icons": {
+        "color": "default",
+        "overlay": false
+      },
+      "package": {
+        "window_buttons": "mac",
+        "topbar": "translucent",
+        "radius": 10,
+        "icons": "whitesur",
+        "dock": "macos",
+        "dock_opacity": 65,
+        "variant": "dark"
+      },
+      "base": {
+        "bg-0": "#161616",
+        "bg-1": "#1E1E1E",
+        "bg-2": "#2A2A2C",
+        "bg-3": "#3A3A3C",
+        "border": "#48484A",
+        "fg-0": "#F5F5F7",
+        "fg-1": "#AEAEB2",
+        "fg-2": "#6C6C70",
+        "purple": "#0A84FF",
+        "magenta": "#FF375F",
+        "cyan": "#64D2FF",
+        "red": "#FF453A",
+        "green": "#32D74B",
+        "yellow": "#FFD60A",
+        "blue": "#409CFF"
+      },
+      "darker": {
+        "bg-0": "#000000",
+        "bg-1": "#0A0A0A",
+        "bg-2": "#161616",
+        "bg-3": "#262628",
+        "border": "#3A3A3C"
+      },
+      "accents": {
+        "blue": {
+          "hex": "#0A84FF",
+          "gnome": "blue"
+        },
+        "purple": {
+          "hex": "#BF5AF2",
+          "gnome": "purple"
+        },
+        "pink": {
+          "hex": "#FF375F",
+          "gnome": "pink"
+        },
+        "red": {
+          "hex": "#FF453A",
+          "gnome": "red"
+        },
+        "orange": {
+          "hex": "#FF9F0A",
+          "gnome": "orange"
+        },
+        "yellow": {
+          "hex": "#FFD60A",
+          "gnome": "yellow"
+        },
+        "green": {
+          "hex": "#32D74B",
+          "gnome": "green"
+        },
+        "graphite": {
+          "hex": "#98989D",
+          "gnome": "slate"
+        }
+      },
+      "ansi": {
+        "normal": [
+          "#3A3A3C",
+          "#FF453A",
+          "#32D74B",
+          "#FFD60A",
+          "#409CFF",
+          "#BF5AF2",
+          "#64D2FF",
+          "#AEAEB2"
+        ],
+        "bright": [
+          "#636366",
+          "#FF6961",
+          "#5DE27A",
+          "#FFE45E",
+          "#70B8FF",
+          "#DA8FFF",
+          "#8EDFFF",
+          "#F5F5F7"
+        ]
+      },
+      "font": "Inter 11"
+    },
+    "macos-light": {
+      "label": "macOS Light",
+      "scheme": "light",
+      "default_accent": "blue",
+      "gnome_accent_default": "blue",
+      "solid_accent": true,
+      "link": "accent",
+      "wallpaper_from": "macos-dark",
+      "icons": {
+        "color": "default",
+        "overlay": false
+      },
+      "package": {
+        "window_buttons": "mac",
+        "topbar": "translucent",
+        "radius": 10,
+        "icons": "whitesur",
+        "dock": "macos",
+        "dock_opacity": 65,
+        "variant": "dark"
+      },
+      "base": {
+        "bg-0": "#FFFFFF",
+        "bg-1": "#F5F5F7",
+        "bg-2": "#FFFFFF",
+        "bg-3": "#E8E8ED",
+        "border": "#D2D2D7",
+        "fg-0": "#1D1D1F",
+        "fg-1": "#4C4C4F",
+        "fg-2": "#86868B",
+        "purple": "#007AFF",
+        "magenta": "#D30F5A",
+        "cyan": "#0A7E8C",
+        "red": "#D70015",
+        "green": "#1F7A33",
+        "yellow": "#946200",
+        "blue": "#0A5DC2",
+        "tl-red": "#FF5F57",
+        "tl-yellow": "#FEBC2E",
+        "tl-green": "#28C840"
+      },
+      "accents": {
+        "blue": {
+          "hex": "#007AFF",
+          "gnome": "blue"
+        },
+        "purple": {
+          "hex": "#AF52DE",
+          "gnome": "purple"
+        },
+        "pink": {
+          "hex": "#FF2D55",
+          "gnome": "pink"
+        },
+        "red": {
+          "hex": "#FF3B30",
+          "gnome": "red"
+        },
+        "orange": {
+          "hex": "#FF9500",
+          "gnome": "orange"
+        },
+        "yellow": {
+          "hex": "#FFCC00",
+          "gnome": "yellow"
+        },
+        "green": {
+          "hex": "#34C759",
+          "gnome": "green"
+        },
+        "graphite": {
+          "hex": "#8E8E93",
+          "gnome": "slate"
+        }
+      },
+      "ansi": {
+        "normal": [
+          "#1D1D1F",
+          "#D70015",
+          "#1F7A33",
+          "#946200",
+          "#0A5DC2",
+          "#9B3FC0",
+          "#0A7E8C",
+          "#8E8E93"
+        ],
+        "bright": [
+          "#636366",
+          "#FF3B30",
+          "#34C759",
+          "#C98A00",
+          "#007AFF",
+          "#AF52DE",
+          "#30B0C7",
+          "#48484A"
+        ]
+      },
+      "font": "Inter 11"
+    },
+    "nebulix-light": {
+      "label": "Nebulix Light (roxo claro)",
+      "scheme": "light",
+      "default_accent": "nebulix",
+      "gnome_accent_default": "purple",
+      "solid_accent": false,
+      "link": "cyan",
+      "wallpaper_from": "nebulix",
+      "icons": {
+        "color": "purple",
+        "overlay": true
+      },
+      "package": {
+        "window_buttons": "gnome",
+        "topbar": "floating",
+        "radius": 14,
+        "icons": "whitesur",
+        "dock": "macos",
+        "dock_opacity": 75,
+        "variant": "dark"
+      },
+      "base": {
+        "bg-0": "#FFFFFF",
+        "bg-1": "#FAF7FF",
+        "bg-2": "#F0EAFB",
+        "bg-3": "#E6DDF7",
+        "border": "#D8CCF0",
+        "fg-0": "#1B1430",
+        "fg-1": "#4A3F73",
+        "fg-2": "#7D72A3",
+        "purple": "#6B3DD9",
+        "magenta": "#C21E9B",
+        "cyan": "#0A7C86",
+        "red": "#C8264F",
+        "green": "#14774A",
+        "yellow": "#8A6100",
+        "blue": "#4455D6"
+      },
+      "accents": {
+        "nebulix": {
+          "hex": "#6B3DD9",
+          "gnome": "purple"
+        },
+        "magenta": {
+          "hex": "#C21E9B",
+          "gnome": "pink"
+        },
+        "cyan": {
+          "hex": "#0A7C86",
+          "gnome": "teal"
+        },
+        "blue": {
+          "hex": "#4455D6",
+          "gnome": "blue"
+        },
+        "green": {
+          "hex": "#14774A",
+          "gnome": "green"
+        },
+        "amber": {
+          "hex": "#8A6100",
+          "gnome": "yellow"
+        }
+      },
+      "ansi": {
+        "normal": [
+          "#1B1430",
+          "#C8264F",
+          "#14774A",
+          "#8A6100",
+          "#4455D6",
+          "#8A3FD0",
+          "#0A7C86",
+          "#6F6496"
+        ],
+        "bright": [
+          "#4A3F73",
+          "#E5365F",
+          "#1E9E63",
+          "#B07B00",
+          "#6677F0",
+          "#A66BFF",
+          "#12A5B0",
+          "#1B1430"
+        ]
+      }
+    }
   }
 }
