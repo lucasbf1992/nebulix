@@ -9,6 +9,7 @@
 - Nova chave `font` (`auto`/`keep`): Inter nos temas macOS, quando instalada.
 - fastfetch passa a seguir a cor de destaque. `nebulix undo` não deixa mais um `gtk.css` vazio quando ele não existia.
 - Mínima mudança visual no tema roxo: botões de alternância do Shell e botão padrão dos diálogos usam as mesmas cores de destaque já usadas no resto.
+- **Zoom da dock:** zoom dos ícones da dock ao passar o mouse (estilo macOS), opcional: `nebulix config set dock_zoom=on dock_zoom_factor=160` ou aba Aparência > Dock. Usa a extensão própria `nebulix-dock-zoom` por cima do Ubuntu Dock (que continua o padrão). Requer o Ubuntu Dock (`gnome-shell-ubuntu-extensions`); na primeira vez é preciso sair e entrar na sessão. `undo`/`reset` desligam e removem a extensão.
 ## 0.2.0
 - App de personalização (GTK4/libadwaita) e `nebulix config`: destaque, variante Darker OLED, raio dos cantos, botões da janela (GNOME ou semáforo macOS), barra flutuante ou sólida, dock.
 - Dock estilo macOS (Ubuntu Dock): flutuante, centralizada, indicador no destaque.

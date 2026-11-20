@@ -1,0 +1,8 @@
+{
+  "uuid": "nebulix-dock-zoom@nebulix.github.io",
+  "name": "Nebulix Dock Zoom",
+  "description": "macOS-style icon magnification for the Ubuntu Dock. Part of Nebulix; configured with `nebulix config set dock_zoom=on`.",
+  "shell-version": ["50", "51"],
+  "url": "https://github.com/lucasbf1992/nebulix",
+  "version": 1
+}

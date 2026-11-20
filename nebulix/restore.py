@@ -8,7 +8,7 @@ from pathlib import Path
 
 from . import icons, paths, vscode
 from .apply import TOUCHED_KEYS
-from .state import State
+from .state import State, set_extension_enabled
 
 
 def restore(mode="undo", log=print, remove_icons=False, dry=False):
@@ -46,9 +46,8 @@ def restore(mode="undo", log=print, remove_icons=False, dry=False):
                 subprocess.run(["dconf", "reset", "-f", f"/org/gnome/terminal/legacy/profiles:/:{u}/"])
         elif e.startswith("vscode:"):
             vscode.restore_entry(e, mode, dry, log)
-        elif e.startswith("ext:") and shutil.which("gnome-extensions"):
-            if not dry:
-                subprocess.run(["gnome-extensions", "disable", e[4:]], capture_output=True)
+        elif e.startswith("ext:"):
+            set_extension_enabled(e[4:], False, dry)
         elif e.startswith("/"):
             log(f"remove {e}")
             if not dry:

@@ -19,6 +19,8 @@ HELP = """nebulix {v} — temas para GNOME (Nebulix, macOS Dark, macOS Light, Ne
   nebulix icons install        baixa o WhiteSur (~7 MB) e ativa os ícones estilo macOS
   nebulix doctor               checa dependências e mostra como instalar
   nebulix wallpaper NOME       orbit | horizon | circuit | code | none
+
+Zoom da dock (opcional, precisa do Ubuntu Dock): nebulix config set dock_zoom=on dock_zoom_factor=160
 """
 
 

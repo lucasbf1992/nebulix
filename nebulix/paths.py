@@ -33,3 +33,7 @@ def state_dir() -> Path:
 
 def config_file() -> Path:
     return conf_home() / "nebulix" / "config.toml"
+
+
+def ext_home() -> Path:
+    return data_home() / "gnome-shell" / "extensions"

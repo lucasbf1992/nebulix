@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 """Install state: manifest, backups of overwritten files and gsettings values (same format as 0.1)."""
 import os
+import re
 import shutil
 import subprocess
 from pathlib import Path
@@ -110,3 +111,20 @@ class State:
         v = self.before.pop((schema, key), None)
         if v is not None and not self.dry:
             subprocess.run(["gsettings", "set", schema, key, v], capture_output=True)
+
+
+SHELL = "org.gnome.shell"
+
+
+def set_extension_enabled(uuid, on, dry=False):
+    """Add/remove `uuid` in the persistent enabled-extensions list (works for extensions the running Shell
+    has not discovered yet, which is the case right after installing one on Wayland) and toggle it live."""
+    if shutil.which("gsettings"):
+        cur = gs("get", SHELL, "enabled-extensions") or ""
+        lst = re.findall(r"'([^']+)'", cur) if "[" in cur else []
+        new = [u for u in lst if u != uuid] + ([uuid] if on else [])
+        if new != lst and not dry:
+            subprocess.run(["gsettings", "set", SHELL, "enabled-extensions", "[" + ", ".join(f"'{u}'" for u in new) + "]"],
+                           capture_output=True)
+    if shutil.which("gnome-extensions") and not dry:
+        subprocess.run(["gnome-extensions", "enable" if on else "disable", uuid], capture_output=True)
