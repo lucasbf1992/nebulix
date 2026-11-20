@@ -21,6 +21,7 @@ LABELS = {
     "dock": {"macos": "Estilo macOS (flutuante, centralizada)", "ubuntu": "Não alterar (padrão do Ubuntu)"},
     "dock_position": {"bottom": "Embaixo", "left": "Esquerda", "right": "Direita"},
     "icons": {"whitesur": "Estilo macOS (WhiteSur, variante do tema)", "mactahoe": "MacTahoe (estilo macOS recente)", "mcmojave": "McMojave-circle (ícones redondos)", "papirus": "Papirus (claro ou escuro, conforme o tema)", "keep": "Não alterar"},
+    "icon_folders": {"auto": "Automático (conforme o tema)", "nebulix": "Pastas Nebulix", "conjunto": "Pastas do conjunto"},
     "vscode_theme": {"keep": "Não alterar", "follow": "Seguir o tema do Nebulix", **{t: gen.vscode_label(t) for t in config.CHOICES["theme"]}},
     "font": {"auto": "Do tema (Inter nos temas macOS, se instalada)", "keep": "Não alterar"},
     "terminal_cursor": {"block": "Bloco", "ibeam": "Barra", "underline": "Sublinhado"},

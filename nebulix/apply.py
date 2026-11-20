@@ -404,31 +404,30 @@ def _icons(st, cfg, t, stage, dry, install, log):
     if mode == "keep":
         st.gs_release(IFACE, "icon-theme")
         return
+    overlay = icons.uses_overlay(theme, cfg["icon_folders"])
+    base, accent = None, cfg["accent"]
     if mode == "papirus":
-        if icons.has_theme(fb):
-            st.gs_set(IFACE, "icon-theme", q(fb))
-        else:
+        if not icons.has_theme(fb):
             st.missing.append((f"{fb} ausente", "sudo apt install papirus-icon-theme"))
-        return
-    entry, accent = icons.SETS[mode], cfg["accent"]
-    wanted = icons.base_name(theme, mode, accent)
-    if not icons.has_theme(wanted) and not dry and (install or icons.cached_tarball(mode)):
-        try:  # a colour already in the cache installs without the network; the download needs the user's ask
-            icons.ensure_set(mode, log, theme, accent)
-        except Exception as e:  # network or checksum failure: fall back to what is installed, else Papirus
-            log(f"! {entry['label']} indisponível ({e}); usando o que há instalado")
-    base = icons.current_base(mode, theme, accent)
-    if not icons.has_theme(wanted):
-        cmd = f"nebulix icons install {mode}   (baixa ~{entry['size_mb']} MB, {entry['license']})"
-        if icons.has_theme(base):
-            st.missing.append((f"ícones {entry['label']} na cor do destaque ({wanted}) não instalados; usando {base}", cmd))
-        else:
-            st.missing.append((f"ícones {entry['label']} não instalados; usando Papirus por enquanto", cmd))
-    if not icons.uses_overlay(theme):  # macOS themes: plain WhiteSur
-        if icons.has_theme(base):
-            st.gs_set(IFACE, "icon-theme", q(base))
-        elif icons.has_theme(fb):
-            st.gs_set(IFACE, "icon-theme", q(fb))
+    else:
+        entry = icons.SETS[mode]
+        wanted = icons.base_name(theme, mode, accent)
+        if not icons.has_theme(wanted) and not dry and (install or icons.cached_tarball(mode)):
+            try:  # a colour already in the cache installs without the network; the download needs the user's ask
+                icons.ensure_set(mode, log, theme, accent)
+            except Exception as e:  # network or checksum failure: fall back to what is installed, else Papirus
+                log(f"! {entry['label']} indisponível ({e}); usando o que há instalado")
+        base = icons.current_base(mode, theme, accent)
+        if not icons.has_theme(wanted):
+            cmd = f"nebulix icons install {mode}   (baixa ~{entry['size_mb']} MB, {entry['license']})"
+            if icons.has_theme(base):
+                st.missing.append((f"ícones {entry['label']} na cor do destaque ({wanted}) não instalados; usando {base}", cmd))
+            else:
+                st.missing.append((f"ícones {entry['label']} não instalados; usando Papirus por enquanto", cmd))
+    if not overlay:  # the set's own folders (macOS themes by default)
+        plain = base if base and icons.has_theme(base) else fb
+        if icons.has_theme(plain):
+            st.gs_set(IFACE, "icon-theme", q(plain))
         return
     root = icons.write_overlay(t, stage / "icons" / icons.THEME_NAME, theme, mode, accent) if not dry else None
     if root:

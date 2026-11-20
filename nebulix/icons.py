@@ -122,7 +122,13 @@ def current_base(set_id, theme, accent="auto"):
     return folder_name(set_id, min(have, key=lambda c: (_closeness(set_id, color, c), c)), scheme)
 
 
-def uses_overlay(theme):
+def uses_overlay(theme, folders="auto"):
+    """Whether the Nebulix squircle folders are layered over the icon set: `auto` follows the theme's `icons.overlay`,
+    `nebulix` always layers them, `conjunto` never does (the set's own folders)."""
+    if folders == "nebulix":
+        return True
+    if folders == "conjunto":
+        return False
     return themes.get(theme)["icons"]["overlay"]
 
 
@@ -252,8 +258,9 @@ def write_overlay(t, root=None, theme="nebulix", set_id="whitesur", accent="auto
     root = Path(root) if root else paths.data_home() / "icons" / THEME_NAME
     shutil.rmtree(root, ignore_errors=True)
     (root / "scalable/places").mkdir(parents=True)
-    base, fb = current_base(set_id, theme, accent), fallback_name(theme)
-    inherits = ",".join([base] if has_theme(base) else []) + ("," if has_theme(base) else "") + f"{fb},hicolor"
+    fb = fallback_name(theme)
+    base = current_base(set_id, theme, accent) if set_id in SETS else None  # Papirus is its own base: the fallback below
+    inherits = ",".join(([base] if base and has_theme(base) else []) + [fb, "hicolor"])
     (root / "index.theme").write_text(
         f"[Icon Theme]\nName={THEME_NAME}\nComment=Nebulix squircle folders over WhiteSur/Papirus\n"
         f"Inherits={inherits}\nDirectories=scalable/places\n\n"

@@ -15,6 +15,7 @@ CHOICES = {
     "dock_position": ("bottom", "left", "right"),
     "dock_zoom": ("off", "on"),
     "icons": ("whitesur", "mactahoe", "mcmojave", "papirus", "keep"),
+    "icon_folders": ("auto", "nebulix", "conjunto"),
     "font": ("auto", "keep"),
     "vscode_theme": ("keep", "follow", "nebulix", "macos-dark", "macos-light", "nebulix-light"),
     "wallpaper": ("orbit", "horizon", "circuit", "code", "gen-orbit", "gen-horizon", "gen-circuit", "gen-code", "none"),
@@ -32,7 +33,7 @@ DEFAULTS = {
     "dock_zoom": "off", "dock_zoom_factor": 160,
     "terminal_opacity": 90, "terminal_cursor": "block", "terminal_font": "auto", "terminal_font_size": 11,
     "terminal_padding": "on", "terminal_line_height": 100, "terminal_columns": 80, "terminal_rows": 24,
-    "icons": "whitesur", "font": "auto", "vscode_theme": "keep", "wallpaper": "orbit", "wallpaper_size": "4k",
+    "icons": "whitesur", "icon_folders": "auto", "font": "auto", "vscode_theme": "keep", "wallpaper": "orbit", "wallpaper_size": "4k",
     "components": list(COMPONENTS),
 }
 
