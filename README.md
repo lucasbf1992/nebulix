@@ -14,7 +14,7 @@ Testado no Ubuntu 26.04 LTS (GNOME 50, Wayland). Alvo: 26.10 (GNOME 51).
 ## Instalar
 
 ```bash
-sudo apt install ./nebulix_0.2.0-3_all.deb    # ou o .tar.xz: ./install.sh
+sudo apt install ./nebulix_0.3.0-5_all.deb    # ou o .tar.xz: ./install.sh
 nebulix apply --dry-run                      # mostra o que mudaria, sem alterar nada
 nebulix apply                                # aplica ao seu usuário
 nebulix                                      # abre o app de personalização
