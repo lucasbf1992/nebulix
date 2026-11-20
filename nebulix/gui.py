@@ -96,6 +96,7 @@ class SettingsWindow(Adw.PreferencesWindow):
             if key == "accent":
                 self._mark_accent()
         self._update_preview()
+        self._update_icons_view()
         config.save(self.cfg)
         if self._timer:
             GLib.source_remove(self._timer)
@@ -164,6 +165,7 @@ class SettingsWindow(Adw.PreferencesWindow):
                 else:
                     row.set_selected(opts.index(self.cfg[key]))
             self._fill_accents()
+            self._update_icons_view()
             if "variant" in self.rows:
                 self.rows["variant"][0].set_visible(themes.get(self.cfg["theme"])["scheme"] == "dark")
         finally:
@@ -304,37 +306,114 @@ class SettingsWindow(Adw.PreferencesWindow):
             f'{sw(ansi[:8])}\n{sw(ansi[8:])}\n'
             f'<span foreground="{t["fg-2"]}" size="small">fonte: {esc(fam)} {cfg["terminal_font_size"]} · opacidade {cfg["terminal_opacity"]}%</span>')
 
+    PREVIEW_ICONS = ("folder", "utilities-terminal", "web-browser", "preferences-system", "system-file-manager", "user-trash", "user-home", "text-x-generic")
+
     def _page_icons(self):
         page = Adw.PreferencesPage(title="Ícones e fundo", icon_name="image-x-generic-symbolic")
         g = Adw.PreferencesGroup(title="Ícones")
-        self.combo(g, "Conjunto", "icons", "O estilo macOS usa o WhiteSur (GPL-3.0), baixado de uma versão fixa do GitHub")
-        sid = self.cfg["icons"] if self.cfg["icons"] in icons.SETS else "whitesur"
-        entry = icons.SETS[sid]
-        base = icons.base_name(self.cfg["theme"], sid, self.cfg["accent"])
-        row = Adw.ActionRow(title=entry["label"], subtitle="Instalado" if icons.has_theme(base) else f"Não instalado (~{entry['size_mb']} MB, verifica sha256)")
-        btn = Gtk.Button(label="Instalar", valign=Gtk.Align.CENTER, sensitive=not icons.has_theme(base))
-
-        def install(_b):
-            btn.set_sensitive(False)
-            row.set_subtitle("Baixando…")
-
-            def work():
-                try:
-                    icons.ensure_set(sid, lambda *_: None, self.cfg["theme"], self.cfg["accent"])
-                    apply(dict(self.cfg), only=["icons"], log=lambda *_: None)
-                    GLib.idle_add(lambda: row.set_subtitle("Instalado") or False)
-                except Exception as e:
-                    GLib.idle_add(lambda: (row.set_subtitle(f"Falhou: {e}"), btn.set_sensitive(True)) and False)
-            threading.Thread(target=work, daemon=True).start()
-        btn.connect("clicked", install)
-        row.add_suffix(btn)
-        g.add(row)
+        self.combo(g, "Conjunto", "icons", "Os conjuntos macOS são de terceiros (GPL-3.0): o Nebulix não os inclui e só baixa quando você pedir")
+        self.combo(g, "Pastas", "icon_folders", "As pastas Nebulix (quadradas arredondadas) ou as do próprio conjunto; no automático, vale a escolha do tema")
+        self.dl_row = Adw.ActionRow()
+        self.dl_btn = Gtk.Button(valign=Gtk.Align.CENTER)
+        self.dl_btn.add_css_class("suggested-action")
+        self.dl_btn.connect("clicked", lambda _b: self._download_set())
+        self.dl_row.add_suffix(self.dl_btn)
+        g.add(self.dl_row)
         page.add(g)
+        gp = Adw.PreferencesGroup(title="Prévia", description="Desenhada a partir dos arquivos do conjunto instalado.")
+        self._icon_theme = Gtk.IconTheme()
+        self._icon_flow = Gtk.FlowBox(selection_mode=Gtk.SelectionMode.NONE, max_children_per_line=8, min_children_per_line=4,
+                                      homogeneous=True, column_spacing=6, row_spacing=6, margin_top=6, margin_bottom=6)
+        self._icon_imgs = []
+        for name in self.PREVIEW_ICONS:
+            img = Gtk.Image(pixel_size=48, tooltip_text=name)
+            self._icon_imgs.append(img)
+            self._icon_flow.append(img)
+        gp.add(self._icon_flow)
+        self._icon_note = Gtk.Label(xalign=0, wrap=True, margin_top=6)
+        self._icon_note.add_css_class("dim-label")
+        gp.add(self._icon_note)
+        page.add(gp)
         g2 = Adw.PreferencesGroup(title="Papel de parede")
         self.combo(g2, "Imagem", "wallpaper", "As versões \"gerada\" usam a cor de destaque escolhida")
         self.combo(g2, "Tamanho (só para gerados)", "wallpaper_size")
         page.add(g2)
+        self._update_icons_view()
         return page
+
+    def _icon_theme_name(self):
+        """Folder of the chosen set that the preview draws from (None: nothing to draw, the set is left alone)."""
+        mode, theme = self.cfg["icons"], self.cfg["theme"]
+        if mode == "keep":
+            return None
+        if mode in icons.SETS:
+            name = icons.current_base(mode, theme, self.cfg["accent"])
+            if icons.has_theme(name):
+                return name
+        fb = icons.fallback_name(theme)
+        return fb if icons.has_theme(fb) else None
+
+    def _update_icons_view(self):
+        if not hasattr(self, "dl_row"):
+            return
+        mode = self.cfg["icons"]
+        name = self._icon_theme_name()
+        if name:
+            self._icon_theme.set_search_path([str(d) for d in icons.icon_dirs()])
+            self._icon_theme.set_theme_name(name)
+        for img, icon in zip(self._icon_imgs, self.PREVIEW_ICONS):
+            if name:
+                img.set_from_paintable(self._icon_theme.lookup_icon(icon, None, 48, self.get_scale_factor(), Gtk.TextDirection.NONE, 0))
+            else:
+                img.clear()
+        self._icon_flow.set_visible(bool(name))
+        if mode == "keep":
+            self._icon_note.set_label("Os ícones do sistema ficam como estão.")
+        elif mode == "papirus" and not name:
+            self._icon_note.set_label("O Papirus não está instalado (sudo apt install papirus-icon-theme).")
+        elif name:
+            fallback = mode in icons.SETS and not name.startswith(icons.SETS[mode]["prefix"])
+            self._icon_note.set_label(f"Tema de ícones: {name}" + (" (o conjunto escolhido ainda não está instalado)" if fallback else ""))
+        else:
+            self._icon_note.set_label("")
+        missing = mode in icons.SETS and not icons.has_theme(icons.base_name(self.cfg["theme"], mode, self.cfg["accent"]))
+        busy = getattr(self, "_dl_busy", False)
+        self.dl_row.set_visible(missing or busy)
+        if mode in icons.SETS and not busy:
+            entry = icons.SETS[mode]
+            self.dl_row.set_title(f"{entry['label']} não instalado na cor do destaque" if name and name.startswith(entry["prefix"])
+                                  else f"{entry['label']} não instalado")
+            self.dl_row.set_subtitle(f"Baixa de uma versão fixa do GitHub e confere o sha256 ({entry['license']}).")
+            self.dl_btn.set_label(f"Baixar (~{entry['size_mb']} MB)")
+            self.dl_btn.set_sensitive(True)
+
+    def _download_set(self):
+        mode, theme, accent = self.cfg["icons"], self.cfg["theme"], self.cfg["accent"]
+        if mode not in icons.SETS or getattr(self, "_dl_busy", False):
+            return
+        self._dl_busy = True
+        self.dl_btn.set_sensitive(False)
+        self.dl_row.set_subtitle("Baixando…")
+        cfg = dict(self.cfg)
+
+        def done(err):
+            self._dl_busy = False
+            self._update_icons_view()
+            if err:
+                self.dl_row.set_visible(True)
+                self.dl_row.set_subtitle(f"Falhou: {err}")
+            self.toast(f"Falhou: {err}" if err else "Ícones instalados e aplicados", bool(err))
+            return False
+
+        def work():
+            err = None
+            try:
+                icons.ensure_set(mode, lambda *_: None, theme, accent)
+                apply(cfg, only=["icons"], log=lambda *_: None)
+            except Exception as e:  # network, checksum or installer failure
+                err = str(e)
+            GLib.idle_add(done, err)
+        threading.Thread(target=work, daemon=True).start()
 
     def _page_dev(self):
         page = Adw.PreferencesPage(title="Componentes", icon_name="preferences-other-symbolic")

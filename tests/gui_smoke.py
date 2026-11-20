@@ -10,7 +10,7 @@ gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
 from gi.repository import Adw, Graphene, GLib, Gtk  # noqa: E402
 
-from nebulix import gui  # noqa: E402
+from nebulix import gui, icons  # noqa: E402
 
 out = Path(sys.argv[1])
 out.mkdir(parents=True, exist_ok=True)
@@ -39,10 +39,55 @@ def shot(win, name):
     tex.save_to_png(str(out / f"{name}.png"))
 
 
+failures = []
+
+
+def check(cond, msg):
+    if not cond:
+        failures.append(msg)
+        print("FALHOU:", msg, file=sys.stderr)
+
+
+def widgets(root):
+    yield root
+    c = root.get_first_child()
+    while c:
+        yield from widgets(c)
+        c = c.get_next_sibling()
+
+
+def strings(row):
+    m = row.get_model()
+    return [m.get_string(i) for i in range(m.get_n_items())]
+
+
+def check_icons_page(win):
+    """The icons page: the five sets, the folders control, the preview and (set not installed) the download button."""
+    check(strings(win.rows["icons"][0]) == list(gui.LABELS["icons"].values()), "seletor de conjuntos sem os rótulos de LABELS")
+    check(strings(win.rows["icons"][0]) == ["Estilo macOS (WhiteSur, variante do tema)", "MacTahoe (estilo macOS recente)", "McMojave-circle (ícones redondos)",
+                                            "Papirus (claro ou escuro, conforme o tema)", "Não alterar"], "rótulos dos 5 conjuntos")
+    check(strings(win.rows["icon_folders"][0]) == list(gui.LABELS["icon_folders"].values()), "controle icon_folders sem os 3 rótulos")
+    check(len([w for w in widgets(win) if isinstance(w, Gtk.Image) and w.get_tooltip_text() in gui.SettingsWindow.PREVIEW_ICONS]) == 8, "prévia sem 8 ícones")
+    for mode in icons.SETS:
+        win.cfg["icons"] = mode
+        win._update_icons_view()
+        want = not icons.has_theme(icons.base_name(win.cfg["theme"], mode, win.cfg["accent"]))
+        check(win.dl_row.get_visible() == want, f"botão de baixar em {mode}: visível deveria ser {want}")
+        if want:
+            check(win.dl_btn.get_label() == f"Baixar (~{icons.SETS[mode]['size_mb']} MB)", f"rótulo do botão em {mode}: {win.dl_btn.get_label()}")
+    for mode in ("papirus", "keep"):
+        win.cfg["icons"] = mode
+        win._update_icons_view()
+        check(not win.dl_row.get_visible(), f"botão de baixar não deve aparecer em {mode}")
+    win.cfg["icons"] = "whitesur"
+    win._update_icons_view()
+
+
 def go(a):
     win = gui.SettingsWindow(a)
     win.set_default_size(720, 900)
     win.present()
+    check_icons_page(win)
     pl = pages(win)
     state = {"i": 0}
 
@@ -61,3 +106,4 @@ def go(a):
 
 app.connect("activate", go)
 app.run(None)
+sys.exit(1 if failures else 0)
