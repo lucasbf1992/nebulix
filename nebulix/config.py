@@ -19,11 +19,19 @@ CHOICES = {
     "vscode_theme": ("keep", "follow", "nebulix", "macos-dark", "macos-light", "nebulix-light"),
     "wallpaper": ("orbit", "horizon", "circuit", "code", "gen-orbit", "gen-horizon", "gen-circuit", "gen-code", "none"),
     "wallpaper_size": ("1080p", "1440p", "4k", "ultrawide"),
+    "terminal_cursor": ("block", "ibeam", "underline"),
+    "terminal_font": ("auto", "keep"),
+    "terminal_padding": ("on", "off"),
 }
+INT_RANGES = (("radius", 6, 20), ("dock_icon_size", 32, 64), ("dock_opacity", 20, 100), ("dock_zoom_factor", 120, 200),
+              ("terminal_opacity", 70, 100), ("terminal_font_size", 8, 20), ("terminal_line_height", 100, 140),
+              ("terminal_columns", 80, 240), ("terminal_rows", 24, 80))
 DEFAULTS = {
     "theme": "nebulix", "accent": "auto", "variant": "dark", "radius": 14, "window_buttons": "gnome", "topbar": "floating",
     "dock": "macos", "dock_position": "bottom", "dock_icon_size": 48, "dock_opacity": 75,
     "dock_zoom": "off", "dock_zoom_factor": 160,
+    "terminal_opacity": 90, "terminal_cursor": "block", "terminal_font": "auto", "terminal_font_size": 11,
+    "terminal_padding": "on", "terminal_line_height": 100, "terminal_columns": 80, "terminal_rows": 24,
     "icons": "whitesur", "font": "auto", "vscode_theme": "keep", "wallpaper": "orbit", "wallpaper_size": "4k",
     "components": list(COMPONENTS),
 }
@@ -59,7 +67,7 @@ def validate(raw: dict) -> dict:
     for k, ch in CHOICES.items():
         if cfg[k] not in ch:
             errs.append(f"{k} inválido: {cfg[k]!r} (use {', '.join(ch)})")
-    for k, lo, hi in (("radius", 6, 20), ("dock_icon_size", 32, 64), ("dock_opacity", 20, 100), ("dock_zoom_factor", 120, 200)):
+    for k, lo, hi in INT_RANGES:
         if not isinstance(cfg[k], int) or isinstance(cfg[k], bool) or not lo <= cfg[k] <= hi:
             errs.append(f"{k} deve ser inteiro entre {lo} e {hi}")
     comps = cfg["components"]

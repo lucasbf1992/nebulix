@@ -1,4 +1,11 @@
 # Changelog
+## 0.4.0 (2026-11-20)
+- **Terminal por tema:** transparência, cursor, fonte e cores adequados a cada tema. Opacidade padrão 90% (Nebulix), 95% (macOS Dark) e 100% (temas claros), cursor bloco/barra. Novas chaves `terminal_opacity`, `terminal_cursor`, `terminal_font`, `terminal_font_size`, `terminal_padding`, `terminal_line_height`, `terminal_columns`, `terminal_rows`; opacidade e cursor fazem parte do pacote do tema.
+- Nova aba **Terminal** no app, com prévia (fundo translúcido, prompt, as 16 cores ANSI e o cursor).
+- **Ptyxis:** a paleta agora é de fato usada: o Nebulix cria o perfil "Nebulix" e o torna o padrão (antes, sem perfil existente, a paleta nunca era selecionada). A paleta traz `[Dark]` e `[Light]` do par do tema e `interface-style` fica em `system`. `undo`/`reset` removem o perfil e restauram o padrão anterior.
+- **GNOME Terminal:** o perfil "Nebulix" passa a ser reescrito a cada aplicação (antes, trocar de tema não atualizava as cores) e vira o padrão.
+- Fonte do terminal: JetBrainsMono Nerd Font, JetBrains Mono ou a do sistema, conforme instalada; `nebulix doctor` sugere `fonts-jetbrains-mono`.
+- `build.py` e os testes checam o contraste do texto com o fundo na opacidade mínima.
 ## 0.3.0 (2026-11-20)
 - **Correções do primeiro teste real:** trocar de tema várias vezes seguidas no app não gera mais "Arquivo existe" (applies serializados e travados por usuário; o app junta pedidos rápidos); os ícones da dock não ficam mais invisíveis ao trocar o tema com o zoom ligado (a extensão restaura os ícones quando o Shell os recria); a extensão do VS Code é registrada em `extensions.json` (antes o VS Code a marcava como removida/incompatível), e `undo`/`reset` removem o registro.
 - **Sistema de temas:** nova chave `theme` (`nebulix`, `macos-dark`, `macos-light`, `nebulix-light`), `nebulix theme [NOME]` e seletor na aba Aparência. Escolher um tema aplica um pacote (destaque, botões da janela, barra, cantos, ícones, dock, fonte) e cada item continua ajustável. `accent = "auto"` usa o destaque padrão do tema.

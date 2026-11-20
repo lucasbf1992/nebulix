@@ -21,6 +21,7 @@ HELP = """nebulix {v} — temas para GNOME (Nebulix, macOS Dark, macOS Light, Ne
   nebulix wallpaper NOME       orbit | horizon | circuit | code | none
 
 Zoom da dock (opcional, precisa do Ubuntu Dock): nebulix config set dock_zoom=on dock_zoom_factor=160
+Terminal: nebulix config set terminal_opacity=85 terminal_cursor=ibeam terminal_font_size=12
 """
 
 

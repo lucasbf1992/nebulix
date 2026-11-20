@@ -26,6 +26,11 @@ TOUCHED_KEYS = [
 ] + [(DOCK, k) for k in ("dock-position", "extend-height", "dash-max-icon-size", "transparency-mode", "background-opacity",
                          "apply-custom-theme", "show-apps-at-top", "running-indicator-style",
                          "custom-theme-customize-running-dots", "custom-theme-running-dots-color", "click-action")]
+PTYXIS = "org.gnome.Ptyxis"
+GNT_LIST = "org.gnome.Terminal.ProfilesList"
+PTYXIS_KEYS = ("profile-uuids", "default-profile-uuid", "cursor-shape", "font-name", "use-system-font", "disable-padding",
+               "default-columns", "default-rows", "interface-style")
+TOUCHED_KEYS += [(PTYXIS, k) for k in PTYXIS_KEYS] + [(GNT_LIST, "default")]
 THEMES_DIRS = ("Nebulix-Dark", "Nebulix-Light")  # one directory per colour scheme
 
 
@@ -48,7 +53,7 @@ def render_all(cfg, out: Path, log=print):
             shutil.copy2(f, dest)
     others = [(i, *palette.tokens(dict(cfg, theme=i, accent="auto", variant="dark" if i != cfg["theme"] else cfg["variant"])))
               for i in config.CHOICES["theme"] if i != cfg["theme"]]
-    gen.generate(P, t, out, cfg["theme"], others)
+    gen.generate(P, t, out, cfg["theme"], others, dict(cfg, terminal_font_family=terminal_font(cfg)))
     return t
 
 
@@ -148,10 +153,7 @@ def _apply(cfg=None, dry=False, log=print, install_icons=False, only=None):
             _dock(st, cfg, acc)
             _dock_zoom(st, cfg, dry, log)
         if "terminal" in comps:
-            st.put_text((stage / "terminal/nebulix.palette").read_text(), data / "org.gnome.Ptyxis/palettes/nebulix.palette")
-            u = (gs("get", "org.gnome.Ptyxis", "default-profile-uuid") or "").strip("'")
-            if u and not dry:
-                st.gs_set(f"org.gnome.Ptyxis.Profile:/org/gnome/Ptyxis/Profiles/{u}/", "palette", "'nebulix'")
+            _ptyxis(st, cfg, stage, dry, log)
             _gnome_terminal(st, stage, dry, log)
         if "starship" in comps:
             st.put_text((stage / "starship/starship.toml").read_text(), conf / "starship.toml")
@@ -272,18 +274,67 @@ def _dock_zoom(st, cfg, dry, log):
                            "saia da sessão e entre de novo (o zoom liga sozinho)"))
 
 
+def terminal_font(cfg):
+    """Family for the terminal: JetBrainsMono Nerd Font, then JetBrains Mono; None keeps the system monospace font."""
+    if cfg["terminal_font"] == "keep":
+        return None
+    return next((f for f in ("JetBrainsMono Nerd Font", "JetBrains Mono") if has_font(f)), None)
+
+
+def _ptyxis(st, cfg, stage, dry, log):
+    """Own 'Nebulix' profile (made the default) with the palette, opacity and line height; cursor, font, padding and
+    window size are global settings in Ptyxis. Undo/reset remove the profile and put the globals back."""
+    st.put_text((stage / "terminal/nebulix.palette").read_text(), paths.data_home() / "org.gnome.Ptyxis/palettes/nebulix.palette")
+    if not shutil.which("gsettings") or gs("get", PTYXIS, "profile-uuids") is None:
+        return  # Ptyxis not installed: only the palette file above
+    ent = next((e for e in st.manifest if e.startswith("ptyxis:")), None)
+    u = ent[7:] if ent else str(uuid.uuid4())
+    lst = re.findall(r"'([^']+)'", gs("get", PTYXIS, "profile-uuids") or "")
+    if u not in lst:
+        st.gs_set(PTYXIS, "profile-uuids", "[" + ", ".join(q(x) for x in lst + [u]) + "]")
+    if not dry:
+        st.note(f"ptyxis:{u}")
+    prof = f"{PTYXIS}.Profile:/org/gnome/Ptyxis/Profiles/{u}/"
+    for k, v in (("label", q("Nebulix")), ("palette", q("nebulix")), ("opacity", f"{cfg['terminal_opacity'] / 100:.2f}"),
+                 ("cell-height-scale", f"{cfg['terminal_line_height'] / 100:g}")):
+        st.gs_set(prof, k, v)
+    st.gs_set(PTYXIS, "default-profile-uuid", q(u))
+    st.gs_set(PTYXIS, "interface-style", "'system'")  # the palette's [Dark]/[Light] section follows the system scheme
+    st.gs_set(PTYXIS, "cursor-shape", q(cfg["terminal_cursor"]))
+    st.gs_set(PTYXIS, "disable-padding", "true" if cfg["terminal_padding"] == "off" else "false")
+    st.gs_set(PTYXIS, "default-columns", str(cfg["terminal_columns"]))
+    st.gs_set(PTYXIS, "default-rows", str(cfg["terminal_rows"]))
+    fam = terminal_font(cfg)
+    if fam:
+        st.gs_set(PTYXIS, "use-system-font", "false")
+        st.gs_set(PTYXIS, "font-name", q(f"{fam} {cfg['terminal_font_size']}"))
+    else:
+        st.gs_release(PTYXIS, "use-system-font")
+        st.gs_release(PTYXIS, "font-name")
+    if not dry:
+        log("perfil 'Nebulix' definido como padrão no Ptyxis")
+
+
 def _gnome_terminal(st, stage, dry, log):
-    if dry or not shutil.which("dconf") or any(e.startswith("gnt:") for e in st.manifest):
+    """'Nebulix' profile of GNOME Terminal: created once, rewritten on every apply (so theme changes show up)."""
+    if dry or not shutil.which("dconf"):
         return
     base = "/org/gnome/terminal/legacy/profiles:/"
-    cur = subprocess.run(["dconf", "read", base + "list"], capture_output=True, text=True).stdout.strip()
-    if not cur:
-        return
-    u = str(uuid.uuid4())
+    ent = next((e for e in st.manifest if e.startswith("gnt:")), None)
+    if ent:
+        u = ent[4:].split(":", 1)[0]
+    else:
+        # the key is unset until GNOME Terminal's preferences are touched: the schema default still lists the stock profile
+        raw = subprocess.run(["dconf", "read", base + "list"], capture_output=True, text=True).stdout.strip()
+        lst = re.findall(r"'([^']+)'", raw or gs("get", GNT_LIST, "list") or "")
+        if not lst:
+            return  # GNOME Terminal not installed
+        u = str(uuid.uuid4())
+        subprocess.run(["dconf", "write", base + "list", "[" + ", ".join(q(x) for x in lst + [u]) + "]"])
+        st.note(f"gnt:{u}:{raw}")  # empty `raw`: the key was unset, undo resets it
     subprocess.run(["dconf", "load", f"{base}:{u}/"], input=(stage / "terminal/nebulix-gnome-terminal.dconf").read_text(), text=True)
-    subprocess.run(["dconf", "write", base + "list", re.sub(r"\]$", f", '{u}']", cur)])
-    st.note(f"gnt:{u}:{cur}")
-    log("perfil 'Nebulix' adicionado ao GNOME Terminal")
+    st.gs_set(GNT_LIST, "default", q(u))
+    log("perfil 'Nebulix' definido como padrão no GNOME Terminal")
 
 
 def _wallpaper(st, cfg, t, stage, dry, log):

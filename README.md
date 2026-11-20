@@ -5,7 +5,7 @@ Testado no Ubuntu 26.04 LTS (GNOME 50, Wayland). Alvo: 26.10 (GNOME 51).
 
 ![desktop](images/design/desktop.png)
 
-**Inclui:** apps GTK 3/4 e libadwaita, GNOME Shell (barra flutuante, menus), dock estilo macOS, ícones WhiteSur + pastas Nebulix, Ptyxis/GNOME Terminal, Starship, fastfetch, btop, VS Code, Neovim, wallpapers.
+**Inclui:** apps GTK 3/4 e libadwaita, GNOME Shell (barra flutuante, menus), dock estilo macOS, ícones WhiteSur + pastas Nebulix, Ptyxis/GNOME Terminal (transparência, cursor e fonte por tema), Starship, fastfetch, btop, VS Code, Neovim, wallpapers.
 
 | | | | |
 |---|---|---|---|
@@ -14,7 +14,7 @@ Testado no Ubuntu 26.04 LTS (GNOME 50, Wayland). Alvo: 26.10 (GNOME 51).
 ## Instalar
 
 ```bash
-sudo apt install ./nebulix_0.3.0-5_all.deb    # ou o .tar.xz: ./install.sh
+sudo apt install ./nebulix_0.4.0-1_all.deb    # ou o .tar.xz: ./install.sh
 nebulix apply --dry-run                      # mostra o que mudaria, sem alterar nada
 nebulix apply                                # aplica ao seu usuário
 nebulix                                      # abre o app de personalização
@@ -45,7 +45,22 @@ nebulix config set accent=magenta variant=darker radius=10      # accent do tema
 nebulix config set window_buttons=mac topbar=solid dock_position=left
 nebulix config set wallpaper=gen-orbit        # versões geradas seguem a cor de destaque
 ```
-Chaves: `theme` (nebulix, macos-dark, macos-light, nebulix-light), `accent` (`auto`, um nome do tema ou `#RRGGBB`; Nebulix: nebulix, magenta, cyan, blue, green, amber; macOS: blue, purple, pink, red, orange, yellow, green, graphite), `variant` (dark, darker; só nos temas escuros), `radius` (6 a 20), `window_buttons` (gnome, mac), `topbar` (floating, solid, translucent), `font` (auto, keep), `vscode_theme` (keep, follow ou o id de um tema), `dock` (macos, ubuntu), `dock_position` (bottom, left, right), `dock_icon_size`, `dock_opacity`, `dock_zoom` (off, on), `dock_zoom_factor` (120 a 200, em %), `icons` (whitesur, papirus, keep), `wallpaper`, `components`. O arquivo fica em `~/.config/nebulix/config.toml`.
+Chaves: `theme` (nebulix, macos-dark, macos-light, nebulix-light), `accent` (`auto`, um nome do tema ou `#RRGGBB`; Nebulix: nebulix, magenta, cyan, blue, green, amber; macOS: blue, purple, pink, red, orange, yellow, green, graphite), `variant` (dark, darker; só nos temas escuros), `radius` (6 a 20), `window_buttons` (gnome, mac), `topbar` (floating, solid, translucent), `font` (auto, keep), `vscode_theme` (keep, follow ou o id de um tema), `dock` (macos, ubuntu), `dock_position` (bottom, left, right), `dock_icon_size`, `dock_opacity`, `dock_zoom` (off, on), `dock_zoom_factor` (120 a 200, em %), `terminal_opacity` (70 a 100, em %), `terminal_cursor` (block, ibeam, underline), `terminal_font` (auto, keep), `terminal_font_size` (8 a 20), `terminal_padding` (on, off), `terminal_line_height` (100 a 140, em %), `terminal_columns` (80 a 240), `terminal_rows` (24 a 80), `icons` (whitesur, papirus, keep), `wallpaper`, `components`. O arquivo fica em `~/.config/nebulix/config.toml`.
+
+## Terminal
+Cada tema traz o seu visual para o terminal, aplicado ao **Ptyxis** (perfil próprio "Nebulix", que vira o padrão) e ao **GNOME Terminal** (perfil "Nebulix", reescrito a cada aplicação):
+
+| Tema | Opacidade | Cursor |
+|---|---|---|
+| `nebulix` | 90% | bloco |
+| `macos-dark` | 95% | barra |
+| `macos-light`, `nebulix-light` | 100% (transparência em fundo claro atrapalha a leitura) | barra / bloco |
+
+A paleta do Ptyxis leva as duas variantes do mesmo par (Nebulix e Nebulix Light, macOS Dark e Light), então o terminal acompanha o esquema claro/escuro do sistema. A fonte é JetBrainsMono Nerd Font ou JetBrains Mono, o que estiver instalado (`sudo apt install fonts-jetbrains-mono`), senão a fonte do sistema. Também dá para ajustar margem interna, altura da linha e tamanho inicial da janela, na aba **Terminal** do app (com prévia) ou assim:
+```bash
+nebulix config set terminal_opacity=80 terminal_cursor=underline terminal_font_size=12
+```
+O texto continua com contraste de pelo menos 4.5:1 mesmo na opacidade mínima (70%), sobre fundo branco ou preto. O Ptyxis não desfoca o fundo; só há transparência.
 
 ## Voltar ao padrão
 

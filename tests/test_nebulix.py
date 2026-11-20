@@ -612,6 +612,158 @@ class TestDockZoom(Sandbox):
 
 
 
+FAKE_DCONF = '''#!/usr/bin/env python3
+import json, os, sys
+f = os.path.join(os.environ["FAKE_STATE"], "dconf.json")
+d = json.load(open(f)) if os.path.exists(f) else {}
+a = sys.argv[1:]
+if a[0] == "read": print(d.get(a[1], ""))
+elif a[0] == "write": d[a[1]] = a[2]
+elif a[0] == "load": d["load:" + a[1]] = sys.stdin.read()
+elif a[0] == "reset":
+    for k in [k for k in d if k.endswith(a[-1]) or k == "load:" + a[-1]]:
+        d.pop(k)
+json.dump(d, open(f, "w"))
+'''
+
+
+class TestTerminal(Sandbox):
+    PT = "org.gnome.Ptyxis"
+
+    def setUp(self):
+        super().setUp()
+        (self.tmp / "bin/dconf").write_text(FAKE_DCONF)
+        (self.tmp / "bin/dconf").chmod(0o755)
+        (self.tmp / "state/gs.json").write_text(json.dumps({f"{self.PT}|profile-uuids": "@as []", f"{self.PT}|default-profile-uuid": "''"}))
+
+    def cfg(self, theme="nebulix", **kw):
+        from nebulix import config
+        return config.validate({**config.apply_theme(config.validate({}), theme), "wallpaper": "none", **kw})
+
+    def dconf(self):
+        f = self.tmp / "state/dconf.json"
+        return json.loads(f.read_text()) if f.exists() else {}
+
+    def profile(self, key):
+        u = [k for k in self.gs() if k.startswith(f"{self.PT}.Profile:/")]
+        self.assertTrue(u, "no profile written")
+        return self.gs()[f"{u[0].split('|')[0]}|{key}"]
+
+    def test_theme_defaults_for_opacity_and_cursor(self):
+        from nebulix import config
+        got = {th: (c["terminal_opacity"], c["terminal_cursor"]) for th in config.CHOICES["theme"]
+               for c in [config.apply_theme(config.validate({}), th)]}
+        self.assertEqual(got, {"nebulix": (90, "block"), "macos-dark": (95, "ibeam"),
+                               "macos-light": (100, "ibeam"), "nebulix-light": (100, "block")})
+        for bad in ({"terminal_opacity": 50}, {"terminal_cursor": "x"}, {"terminal_rows": 5}, {"terminal_padding": "maybe"}):
+            with self.assertRaises(ValueError):
+                config.validate(bad)
+
+    def test_palette_has_dark_and_light_twin_for_every_theme(self):
+        import re
+        from nebulix import config, palette, themes
+        from nebulix.apply import render_all
+        for th in config.CHOICES["theme"]:
+            out = self.tmp / f"out-{th}"
+            cfg = self.cfg(theme=th)
+            render_all(cfg, out, log=lambda *_: None)
+            txt = (out / "terminal/nebulix.palette").read_text()
+            sec = {m.group(1): m.group(2) for m in re.finditer(r"\[(Dark|Light)\]\n(.*?)(?=\n\[|\Z)", txt, re.S)}
+            self.assertEqual(set(sec), {"Dark", "Light"})
+            for scheme, theme_id in (("Dark", th if themes.get(th)["scheme"] == "dark" else themes.pair(th)),
+                                     ("Light", th if themes.get(th)["scheme"] == "light" else themes.pair(th))):
+                _, t = palette.tokens(config.validate({"theme": theme_id}))
+                self.assertIn(f"Background={t['bg-0']}", sec[scheme])
+                self.assertIn(f"Foreground={t['fg-0']}", sec[scheme])
+                self.assertIn(f"Cursor={t['purple']}", sec[scheme])
+                self.assertEqual(sec[scheme].count("Color"), 16)
+
+    def test_ptyxis_profile_created_made_default_and_undone(self):
+        from nebulix.apply import apply
+        from nebulix.restore import restore
+        before = self.snapshot()
+        apply(self.cfg(theme="macos-dark"), only=["terminal"], log=lambda *_: None)
+        g = self.gs()
+        u = g[f"{self.PT}|default-profile-uuid"].strip("'")
+        self.assertIn(u, g[f"{self.PT}|profile-uuids"])
+        self.assertEqual(self.profile("palette"), "'nebulix'")
+        self.assertEqual(self.profile("opacity"), "0.95")
+        self.assertEqual(g[f"{self.PT}|cursor-shape"], "'ibeam'")
+        self.assertEqual(g[f"{self.PT}|interface-style"], "'system'")
+        self.assertEqual(g[f"{self.PT}|default-columns"], "80")
+        # re-applying with another theme reuses the same profile
+        apply(self.cfg(theme="nebulix", terminal_opacity=80), only=["terminal"], log=lambda *_: None)
+        g = self.gs()
+        self.assertEqual(g[f"{self.PT}|default-profile-uuid"].strip("'"), u)
+        self.assertEqual(g[f"{self.PT}|profile-uuids"].count(u), 1)
+        self.assertEqual(self.profile("opacity"), "0.80")
+        self.assertEqual(g[f"{self.PT}|cursor-shape"], "'block'")
+        restore("undo", log=lambda *_: None)
+        g = self.gs()
+        self.assertEqual(g[f"{self.PT}|profile-uuids"], "@as []")
+        self.assertEqual(g[f"{self.PT}|default-profile-uuid"], "''")
+        self.assertEqual(self.snapshot(), before)
+
+    def test_reset_clears_the_ptyxis_keys(self):
+        from nebulix.apply import apply
+        from nebulix.restore import restore
+        apply(self.cfg(), only=["terminal"], log=lambda *_: None)
+        restore("reset", log=lambda *_: None)
+        self.assertEqual(self.gs(), {})
+
+    def test_font_follows_what_is_installed_and_keep_leaves_it(self):
+        from unittest import mock
+        from nebulix import apply as ap
+        for installed, want in (({"JetBrainsMono Nerd Font"}, "JetBrainsMono Nerd Font"), ({"JetBrains Mono"}, "JetBrains Mono"), (set(), None)):
+            with mock.patch.object(ap, "has_font", lambda f, i=installed: f in i):
+                self.assertEqual(ap.terminal_font(self.cfg()), want)
+                self.assertIsNone(ap.terminal_font(self.cfg(terminal_font="keep")))
+        with mock.patch.object(ap, "has_font", lambda f: f == "JetBrains Mono"):
+            ap.apply(self.cfg(terminal_font_size=13), only=["terminal"], log=lambda *_: None)
+            self.assertEqual(self.gs()[f"{self.PT}|font-name"], "'JetBrains Mono 13'")
+            ap.apply(self.cfg(terminal_font="keep"), only=["terminal"], log=lambda *_: None)
+            self.assertEqual(self.gs()[f"{self.PT}|font-name"], "'default'")  # back to what it was
+
+    def test_gnome_terminal_profile_is_rewritten_when_the_theme_changes(self):
+        from nebulix.apply import apply
+        from nebulix.restore import restore
+        (self.tmp / "state/dconf.json").write_text(json.dumps({"/org/gnome/terminal/legacy/profiles:/list": "['abc']"}))
+        apply(self.cfg(theme="nebulix"), only=["terminal"], log=lambda *_: None)
+        loads = [v for k, v in self.dconf().items() if k.startswith("load:")]
+        self.assertEqual(len(loads), 1)
+        self.assertIn("background-transparency-percent=10", loads[0])
+        self.assertIn("use-transparent-background=true", loads[0])
+        self.assertIn("cursor-shape='block'", loads[0])
+        apply(self.cfg(theme="macos-light"), only=["terminal"], log=lambda *_: None)
+        loads = [v for k, v in self.dconf().items() if k.startswith("load:")]
+        self.assertEqual(len(loads), 1)  # same profile, new content
+        self.assertIn("background-color='#FFFFFF'", loads[0])
+        self.assertIn("use-transparent-background=false", loads[0])
+        self.assertIn("cursor-shape='ibeam'", loads[0])
+        self.assertIn("org.gnome.Terminal.ProfilesList|default", self.gs())
+        restore("undo", log=lambda *_: None)
+        self.assertEqual(self.dconf().get("/org/gnome/terminal/legacy/profiles:/list"), "['abc']")
+        self.assertNotIn("org.gnome.Terminal.ProfilesList|default", {k: v for k, v in self.gs().items() if v != "'default'"})
+
+    def test_gnome_terminal_with_unset_profile_list_uses_the_schema_default(self):
+        from nebulix.apply import apply
+        from nebulix.restore import restore
+        g = self.gs()
+        g["org.gnome.Terminal.ProfilesList|list"] = "['stock']"
+        (self.tmp / "state/gs.json").write_text(json.dumps(g))
+        apply(self.cfg(), only=["terminal"], log=lambda *_: None)
+        lst = self.dconf()["/org/gnome/terminal/legacy/profiles:/list"]
+        self.assertTrue(lst.startswith("['stock', '") and lst.endswith("']"))
+        self.assertTrue([k for k in self.dconf() if k.startswith("load:")])
+        restore("undo", log=lambda *_: None)
+        self.assertNotIn("/org/gnome/terminal/legacy/profiles:/list", self.dconf())  # unset again
+
+    def test_contrast_stays_readable_at_the_lowest_opacity(self):
+        from nebulix import config, palette
+        for th in config.CHOICES["theme"]:
+            self.assertGreaterEqual(palette.terminal_contrast(config.validate({"theme": th})), 4.5, th)
+
+
 class TestConcurrentApply(Sandbox):
     def test_parallel_applies_do_not_collide(self):
         import threading

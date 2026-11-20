@@ -7,7 +7,16 @@ from . import paths
 ALIASES = {"macos": "macos-dark", "claro": "macos-light", "light": "macos-light", "macos-claro": "macos-light",
            "nebulix-claro": "nebulix-light"}
 # keys a theme changes when it is chosen ("pacote"); each stays adjustable afterwards
-PACKAGE_KEYS = ("window_buttons", "topbar", "radius", "icons", "dock", "dock_opacity", "variant")
+PACKAGE_KEYS = ("window_buttons", "topbar", "radius", "icons", "dock", "dock_opacity", "variant",
+                "terminal_opacity", "terminal_cursor")
+
+
+# the light/dark twin of each theme (the terminal palette carries both, the terminal picks by the system scheme)
+PAIRS = {"nebulix": "nebulix-light", "nebulix-light": "nebulix", "macos-dark": "macos-light", "macos-light": "macos-dark"}
+
+
+def pair(name: str) -> str:
+    return PAIRS[name]
 
 
 def load_all() -> dict:

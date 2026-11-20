@@ -1,6 +1,6 @@
 {
   "name": "Nebulix",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "themes": {
     "nebulix": {
       "label": "Nebulix (roxo escuro)",
@@ -21,6 +21,8 @@
         "icons": "whitesur",
         "dock": "macos",
         "dock_opacity": 75,
+        "terminal_opacity": 90,
+        "terminal_cursor": "block",
         "variant": "dark"
       },
       "base": {
@@ -115,6 +117,8 @@
         "icons": "whitesur",
         "dock": "macos",
         "dock_opacity": 65,
+        "terminal_opacity": 95,
+        "terminal_cursor": "ibeam",
         "variant": "dark"
       },
       "base": {
@@ -218,6 +222,8 @@
         "icons": "whitesur",
         "dock": "macos",
         "dock_opacity": 65,
+        "terminal_opacity": 100,
+        "terminal_cursor": "ibeam",
         "variant": "dark"
       },
       "base": {
@@ -317,6 +323,8 @@
         "icons": "whitesur",
         "dock": "macos",
         "dock_opacity": 75,
+        "terminal_opacity": 100,
+        "terminal_cursor": "block",
         "variant": "dark"
       },
       "base": {

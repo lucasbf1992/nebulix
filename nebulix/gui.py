@@ -8,8 +8,8 @@ gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
 from gi.repository import Adw, Gdk, GLib, Gtk  # noqa: E402
 
-from . import __version__, config, doctor, gen, icons, paths, themes  # noqa: E402
-from .apply import apply  # noqa: E402
+from . import __version__, config, doctor, gen, icons, palette, paths, themes  # noqa: E402
+from .apply import apply, terminal_font  # noqa: E402
 from .restore import restore  # noqa: E402
 
 APP_ID = "io.github.nebulix.Settings"
@@ -23,6 +23,9 @@ LABELS = {
     "icons": {"whitesur": "Estilo macOS (WhiteSur, variante do tema)", "papirus": "Papirus (claro ou escuro, conforme o tema)", "keep": "Não alterar"},
     "vscode_theme": {"keep": "Não alterar", "follow": "Seguir o tema do Nebulix", **{t: gen.vscode_label(t) for t in config.CHOICES["theme"]}},
     "font": {"auto": "Do tema (Inter nos temas macOS, se instalada)", "keep": "Não alterar"},
+    "terminal_cursor": {"block": "Bloco", "ibeam": "Barra", "underline": "Sublinhado"},
+    "terminal_font": {"auto": "Auto (JetBrains Mono)", "keep": "Não alterar"},
+    "terminal_padding": {"on": "Com margem interna", "off": "Sem margem"},
     "wallpaper": {"orbit": "Órbita", "horizon": "Horizonte", "circuit": "Circuito", "code": "Código", "gen-orbit": "Órbita (gerada, segue o destaque)", "gen-horizon": "Horizonte (gerado, segue o destaque)", "gen-circuit": "Circuito (gerado, segue o destaque)", "gen-code": "Código (gerado, segue o destaque)", "none": "Não alterar"},
     "wallpaper_size": {"1080p": "1080p", "1440p": "1440p", "4k": "4K", "ultrawide": "Ultrawide 21:9"},
 }
@@ -48,6 +51,7 @@ class SettingsWindow(Adw.PreferencesWindow):
         self.status_row.add_suffix(self.apply_btn)
         self._refresh_status()
         self.add(self._page_look())
+        self.add(self._page_terminal())
         self.add(self._page_icons())
         self.add(self._page_dev())
         self.add(self._page_restore())
@@ -90,6 +94,7 @@ class SettingsWindow(Adw.PreferencesWindow):
                 return
             if key == "accent":
                 self._mark_accent()
+        self._update_preview()
         config.save(self.cfg)
         if self._timer:
             GLib.source_remove(self._timer)
@@ -240,6 +245,64 @@ class SettingsWindow(Adw.PreferencesWindow):
         page.add(g3)
         return page
 
+    def _page_terminal(self):
+        page = Adw.PreferencesPage(title="Terminal", icon_name="utilities-terminal-symbolic")
+        gp = Adw.PreferencesGroup(title="Prévia", description="Como o terminal fica com o tema escolhido (a transparência aparece sobre o fundo).")
+        self._term_css = Gtk.CssProvider()
+        Gtk.StyleContext.add_provider_for_display(Gdk.Display.get_default(), self._term_css, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
+        back = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
+        back.add_css_class("nbx-term-back")
+        self._term_label = Gtk.Label(xalign=0, selectable=False)
+        self._term_label.add_css_class("nbx-term")
+        self._term_label.set_margin_start(24)
+        self._term_label.set_margin_end(24)
+        self._term_label.set_margin_top(20)
+        self._term_label.set_margin_bottom(20)
+        win = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, margin_start=28, margin_end=28, margin_top=20, margin_bottom=20)
+        win.add_css_class("nbx-term-win")
+        win.append(self._term_label)
+        back.append(win)
+        gp.add(back)
+        page.add(gp)
+        g = Adw.PreferencesGroup(title="Visual", description="Vale para o Ptyxis e o GNOME Terminal. Cada tema traz o seu padrão de transparência e cursor.")
+        self.spin(g, "Opacidade do fundo", "terminal_opacity", 70, 100, "em % (100 = opaco)")
+        self.combo(g, "Cursor", "terminal_cursor")
+        self.combo(g, "Fonte", "terminal_font", "Usa JetBrainsMono Nerd Font ou JetBrains Mono, o que estiver instalado (sudo apt install fonts-jetbrains-mono)")
+        self.spin(g, "Tamanho da fonte", "terminal_font_size", 8, 20)
+        page.add(g)
+        g2 = Adw.PreferencesGroup(title="Espaçamento e janela")
+        self.combo(g2, "Margem interna", "terminal_padding")
+        self.spin(g2, "Altura da linha", "terminal_line_height", 100, 140, "em %")
+        self.spin(g2, "Colunas iniciais", "terminal_columns", 80, 240)
+        self.spin(g2, "Linhas iniciais", "terminal_rows", 24, 80)
+        page.add(g2)
+        self._update_preview()
+        return page
+
+    def _update_preview(self):
+        if not hasattr(self, "_term_label"):
+            return
+        try:
+            cfg = config.validate(self.cfg)
+        except ValueError:
+            return
+        P, t = palette.tokens(cfg)
+        r, g, b = palette.rgb(t["bg-0"])
+        self._term_css.load_from_string(
+            f".nbx-term-back {{ background: linear-gradient(135deg, {t['purple-dim']}, {t['bg-2']} 55%, {t['purple']}); border-radius: 12px; }}"
+            f".nbx-term-win {{ background: rgba({r}, {g}, {b}, {cfg['terminal_opacity'] / 100:g}); border-radius: 10px; }}"
+            f".nbx-term {{ font-family: 'JetBrains Mono', monospace; font-size: {cfg['terminal_font_size']}pt; color: {t['fg-0']}; }}")
+        ansi = P["ansi"]["normal"] + P["ansi"]["bright"]
+        cur = {"block": "█", "ibeam": "▏", "underline": "▁"}[cfg["terminal_cursor"]]
+        sw = lambda cs: "".join(f'<span background="{c}">  </span>' for c in cs)  # noqa: E731
+        esc = GLib.markup_escape_text
+        fam = terminal_font(cfg) or "do sistema"
+        self._term_label.set_markup(
+            f'<span foreground="{t["accent-text"]}">~/nebulix</span> <span foreground="{t["green"]}">main</span>\n'
+            f'<span foreground="{t["accent-text"]}">❯</span> nebulix theme {esc(cfg["theme"])}<span foreground="{t["purple"]}">{cur}</span>\n'
+            f'{sw(ansi[:8])}\n{sw(ansi[8:])}\n'
+            f'<span foreground="{t["fg-2"]}" size="small">fonte: {esc(fam)} {cfg["terminal_font_size"]} · opacidade {cfg["terminal_opacity"]}%</span>')
+
     def _page_icons(self):
         page = Adw.PreferencesPage(title="Ícones e fundo", icon_name="image-x-generic-symbolic")
         g = Adw.PreferencesGroup(title="Ícones")
@@ -271,7 +334,7 @@ class SettingsWindow(Adw.PreferencesWindow):
         return page
 
     def _page_dev(self):
-        page = Adw.PreferencesPage(title="Componentes", icon_name="utilities-terminal-symbolic")
+        page = Adw.PreferencesPage(title="Componentes", icon_name="preferences-other-symbolic")
         g = Adw.PreferencesGroup(title="O que o Nebulix aplica", description="Desligar um item não desfaz o que já foi aplicado; use Restaurar para isso.")
         for c in config.COMPONENTS:
             r = Adw.SwitchRow(title=COMP_LABELS[c], active=c in self.cfg["components"])

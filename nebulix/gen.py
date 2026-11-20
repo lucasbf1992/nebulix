@@ -9,21 +9,30 @@ def _w(path: Path, text: str):
     path.write_text(text)
 
 
-def ptyxis(P, T, dist):
-    a = P["ansi"]["normal"] + P["ansi"]["bright"]
-    lines = ["[Palette]", "Name=Nebulix", "", "[Dark]",
-             f"Foreground={T['fg-0']}", f"Background={T['bg-0']}", f"Cursor={T['magenta']}",
-             f"Cursor_Foreground={T['bg-0']}" if False else f"Cursor={T['magenta']}"]
-    lines = lines[:-1]
-    lines += [f"Color{i}={c}" for i, c in enumerate(a)]
-    lines += ["", "[Light]", f"Foreground={T['fg-0']}", f"Background={T['bg-0']}"]
-    lines += [f"Color{i}={c}" for i, c in enumerate(a)]
+def _pair_tokens(P, T, theme_id, others):
+    """(dark, light) as [(P, T)] pairs: the chosen theme and its light/dark twin."""
+    from . import themes
+    twin = next(((p, t) for i, p, t in others if i == themes.pair(theme_id)), (P, T))
+    return ((P, T), twin) if T["scheme"] == "dark" else (twin, (P, T))
+
+
+def ptyxis(P, T, dist, theme_id="nebulix", others=(), cfg=None):
+    """Ptyxis palette with a [Dark] and a [Light] section (the twin theme), picked by the system colour scheme."""
+    lines = ["[Palette]", "Name=" + ("Nebulix" if theme_id.startswith("nebulix") else "Nebulix macOS")]
+    for section, (p, t) in zip(("Dark", "Light"), _pair_tokens(P, T, theme_id, others)):
+        a = p["ansi"]["normal"] + p["ansi"]["bright"]
+        lines += ["", f"[{section}]", f"Foreground={t['fg-0']}", f"Background={t['bg-0']}", f"Cursor={t['purple']}"]
+        lines += [f"Color{i}={c}" for i, c in enumerate(a)]
     _w(dist / "terminal/nebulix.palette", "\n".join(lines) + "\n")
 
 
-def gnome_terminal(P, T, dist):
+def gnome_terminal(P, T, dist, theme_id="nebulix", others=(), cfg=None):
+    cfg = cfg or {}
     a = P["ansi"]["normal"] + P["ansi"]["bright"]
     pal = ", ".join(f"'{c}'" for c in a)
+    opacity = cfg.get("terminal_opacity", 100)
+    font = cfg.get("terminal_font_family")  # None: keep the system monospace font
+    shape = {"block": "block", "ibeam": "ibeam", "underline": "underline"}[cfg.get("terminal_cursor", "block")]
     txt = f"""[/]
 visible-name='Nebulix'
 use-theme-colors=false
@@ -31,15 +40,23 @@ foreground-color='{T['fg-0']}'
 background-color='{T['bg-0']}'
 bold-color-same-as-fg=true
 cursor-colors-set=true
-cursor-background-color='{T['magenta']}'
-cursor-foreground-color='{T['on-magenta']}'
+cursor-background-color='{T['purple']}'
+cursor-foreground-color='{T['on-accent']}'
+cursor-shape='{shape}'
 highlight-colors-set=true
 highlight-background-color='{T['accent-solid']}'
 highlight-foreground-color='{T['on-solid']}'
 palette=[{pal}]
-font='JetBrainsMono Nerd Font 11'
-use-system-font=false
+use-transparent-background={'true' if opacity < 100 else 'false'}
+background-transparency-percent={100 - opacity}
+cell-height-scale={cfg.get('terminal_line_height', 100) / 100:g}
+default-size-columns={cfg.get('terminal_columns', 80)}
+default-size-rows={cfg.get('terminal_rows', 24)}
 """
+    if font:
+        txt += f"font='{font} {cfg.get('terminal_font_size', 11)}'\nuse-system-font=false\n"
+    else:
+        txt += "use-system-font=true\n"
     _w(dist / "terminal/nebulix-gnome-terminal.dconf", txt)
 
 
@@ -181,7 +198,8 @@ def nvim(P, T, dist):
     _w(dist / "nvim/colors/nebulix.lua", "\n".join(out) + "\n")
 
 
-def generate(P, T, dist, theme_id="nebulix", others=()):
-    for f in (ptyxis, gnome_terminal, nvim):
-        f(P, T, dist)
+def generate(P, T, dist, theme_id="nebulix", others=(), cfg=None):
+    for f in (ptyxis, gnome_terminal):
+        f(P, T, dist, theme_id, others, cfg)
+    nvim(P, T, dist)
     vscode(P, T, dist, theme_id, others)

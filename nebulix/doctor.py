@@ -4,7 +4,7 @@ import shutil
 import subprocess
 
 from . import config, icons, vscode
-from .apply import TESTED_GNOME, UBUNTU_DOCK, UT, ZOOM, gnome_major
+from .apply import TESTED_GNOME, UBUNTU_DOCK, UT, ZOOM, gnome_major, terminal_font
 
 
 def _run(*a):
@@ -51,8 +51,19 @@ def check():
     fonts = _run("fc-list") if shutil.which("fc-list") else ""
     if theme.startswith("macos") and "inter" not in fonts.lower():
         out.append(("info", "fonte Inter ausente (usada na interface dos temas macOS)", "sudo apt install fonts-inter"))
-    if "JetBrainsMono" not in fonts.replace(" ", ""):
-        out.append(("info", "fonte JetBrains Mono Nerd Font ausente", "https://www.nerdfonts.com/font-downloads (JetBrainsMono)"))
+    try:
+        tcfg = config.load()
+    except Exception:
+        tcfg = config.validate({})
+    fam = terminal_font(tcfg)
+    if fam:
+        out.append(("ok", f"fonte do terminal: {fam}", ""))
+    elif tcfg["terminal_font"] == "auto":
+        out.append(("info", "fonte JetBrains Mono ausente (o terminal usa a fonte monoespaçada do sistema)", "sudo apt install fonts-jetbrains-mono"))
+    if "nerd" not in fonts.lower():
+        out.append(("info", "opcional: Nerd Font para os ícones do prompt Starship", "https://www.nerdfonts.com/font-downloads (JetBrainsMono)"))
+    if not any(shutil.which(x) for x in ("ptyxis", "gnome-terminal")):
+        out.append(("info", "Ptyxis e GNOME Terminal não encontrados (o tema do terminal não terá efeito)", "sudo apt install ptyxis"))
     eds = [f.parent.parent.name for f, _ in vscode.installed_editors()]
     if eds:
         out.append(("ok", f"editor encontrado: {', '.join(eds)}", ""))

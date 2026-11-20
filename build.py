@@ -24,6 +24,11 @@ def main():
                     if c < need:
                         bad += 1
                         print(f"contraste {th}/{acc}/{var}: {a} sobre {b} = {c:.2f} (< {need})")
+    for th in config.CHOICES["theme"]:
+        c = palette.terminal_contrast(config.validate({"theme": th}))
+        if c < 4.5:
+            bad += 1
+            print(f"terminal translúcido a 70% em {th}: texto = {c:.2f} (< 4.5)")
     if bad:
         sys.exit(f"{bad} combinações abaixo do contraste mínimo")
     print(f"contraste ok em {n} combinações de tema x destaque x variante")

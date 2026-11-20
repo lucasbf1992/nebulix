@@ -47,8 +47,12 @@ def _restore(mode="undo", log=print, remove_icons=False, dry=False):
         elif e.startswith("gnt:") and shutil.which("dconf"):
             u, old = e[4:].split(":", 1)
             if not dry:
-                subprocess.run(["dconf", "write", "/org/gnome/terminal/legacy/profiles:/list", old])
+                subprocess.run(["dconf", "write", "/org/gnome/terminal/legacy/profiles:/list", old] if old
+                               else ["dconf", "reset", "/org/gnome/terminal/legacy/profiles:/list"])
                 subprocess.run(["dconf", "reset", "-f", f"/org/gnome/terminal/legacy/profiles:/:{u}/"])
+        elif e.startswith("ptyxis:") and shutil.which("dconf"):
+            if not dry:
+                subprocess.run(["dconf", "reset", "-f", f"/org/gnome/Ptyxis/Profiles/{e[7:]}/"])
         elif e.startswith("vscext:"):
             vscode.unregister(e, dry, log)
         elif e.startswith("vscode:"):

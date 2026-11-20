@@ -112,3 +112,16 @@ RULES = [("fg-0", "bg-0", 7), ("fg-0", "bg-2", 7), ("fg-1", "bg-1", 7), ("fg-2",
 def contrast_report(cfg):
     P, t = tokens(cfg)
     return [(a, b, contrast(t[a], t[b]), need) for a, b, need in RULES]
+
+
+def terminal_contrast(cfg, opacity=None):
+    """Worst case of the translucent terminal: text `fg-0` over the background blended at `opacity` (default: the
+    lowest allowed, 70%) onto pure white and pure black desktops. Returns the lower ratio."""
+    P, t = tokens(cfg)
+    o = (opacity or 70) / 100
+    bg = rgb(t["bg-0"])
+    worst = 21
+    for back in ((255, 255, 255), (0, 0, 0)):
+        mixed = hexs(*(o * c + (1 - o) * k for c, k in zip(bg, back)))
+        worst = min(worst, contrast(t["fg-0"], mixed))
+    return worst
