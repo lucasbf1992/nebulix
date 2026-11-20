@@ -1,4 +1,12 @@
 # Changelog
+## 0.5.0 (2026-11-20)
+- **Conjuntos de ícones:** nova chave `icons` com `whitesur`, `mactahoe` (MacTahoe), `mcmojave` (McMojave-circle), `papirus` e `keep`. Os conjuntos são baixados sob demanda (tarball fixado por versão, com sha256) para `~/.local/share/icons`; `nebulix icons install [CONJUNTO]` baixa e `nebulix config set icons=mactahoe` troca e aplica.
+- **A cor dos ícones agora segue o destaque:** cada conjunto tem a sua lista de cores e o Nebulix instala a mais próxima do destaque do tema (cinza para destaques sem cor), nas variantes escura e clara. Sem a cor exata, usa a mais parecida já instalada e o `nebulix doctor` indica o comando que baixa a certa.
+- **Pastas:** nova chave `icon_folders` (`auto`, `nebulix`, `conjunto`) escolhe quem desenha as pastas: squircle do Nebulix (camada `Nebulix-Icons`) ou as do próprio conjunto; `auto` segue o tema.
+- **Aba Ícones no app** (título "Ícones e fundo"): seletor do conjunto e do estilo das pastas, prévia de ícones do conjunto escolhido e botão **Baixar** (com o tamanho) quando o conjunto não está instalado.
+- **`nebulix reset --remove-icons`:** apaga também os conjuntos baixados, a camada `Nebulix-Icons` e o cache; `undo` e `reset` comuns devolvem o tema de ícones anterior e deixam os conjuntos no disco.
+- **Cache** do tarball verificado em `~/.cache/nebulix/icons`: voltar a um conjunto já baixado não precisa de rede.
+- Correções: downloads de ícones travados contra execuções concorrentes, remoção de ícones tolerante a arquivos ausentes e mapeamento de cores de mesmo nome.
 ## 0.4.0 (2026-11-20)
 - **Terminal por tema:** transparência, cursor, fonte e cores adequados a cada tema. Opacidade padrão 90% (Nebulix), 95% (macOS Dark) e 100% (temas claros), cursor bloco/barra. Novas chaves `terminal_opacity`, `terminal_cursor`, `terminal_font`, `terminal_font_size`, `terminal_padding`, `terminal_line_height`, `terminal_columns`, `terminal_rows`; opacidade e cursor fazem parte do pacote do tema.
 - Nova aba **Terminal** no app, com prévia (fundo translúcido, prompt, as 16 cores ANSI e o cursor).

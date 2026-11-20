@@ -14,7 +14,7 @@ Testado no Ubuntu 26.04 LTS (GNOME 50, Wayland). Alvo: 26.10 (GNOME 51).
 ## Instalar
 
 ```bash
-sudo apt install ./nebulix_0.4.0-1_all.deb    # ou o .tar.xz: ./install.sh
+sudo apt install ./nebulix_0.5.0-1_all.deb    # ou o .tar.xz: ./install.sh
 nebulix apply --dry-run                      # mostra o que mudaria, sem alterar nada
 nebulix apply                                # aplica ao seu usuário
 nebulix                                      # abre o app de personalização
@@ -68,7 +68,7 @@ nebulix config set icons=mactahoe      # troca o conjunto e aplica
 
 **Pastas.** `icon_folders` (`auto`, `nebulix`, `conjunto`) decide quem desenha as pastas. `nebulix` põe as pastas squircle do Nebulix por cima do conjunto (camada `Nebulix-Icons`, que herda o resto dele); `conjunto` usa as pastas do próprio conjunto; `auto` (padrão) segue o tema: squircle nos temas Nebulix, as pastas do conjunto nos temas macOS.
 
-**Cache.** O tarball verificado fica em `~/.cache/nebulix/icons`, então trocar de cor ou de conjunto depois não precisa de rede.
+**Cache.** O tarball verificado fica em `~/.cache/nebulix/icons`, então trocar de cor, ou voltar a um conjunto já baixado, não precisa de rede.
 
 **Desfazer e remover.** `nebulix undo` devolve o tema de ícones que você tinha antes e `nebulix reset` volta ao padrão; os dois deixam os conjuntos baixados no disco. Para apagá-los:
 ```bash

@@ -11,6 +11,7 @@ from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from sandbox import ROOT, Sandbox  # noqa: E402
+from nebulix import __version__  # noqa: E402
 
 FIX = ROOT / "tests/fixtures/0.4.0"
 THEMES = ("macos-dark", "macos-light", "nebulix", "nebulix-light")
@@ -122,7 +123,9 @@ class TestGoldens040(Compat040):
                 for f in sorted((gold / "files").rglob("*")):
                     if f.is_file():
                         rel = f.relative_to(gold / "files")
-                        self.assertEqual((self.home / rel).read_text(), f.read_text(), str(rel))
+                        # the goldens carry the 0.4.0 version in their header comments; the version itself is not under test
+                        want = f.read_text().replace("Nebulix 0.4.0", f"Nebulix {__version__}")
+                        self.assertEqual((self.home / rel).read_text(), want, str(rel))
 
     def test_rendered_terminal_files_match_the_040_goldens(self):  # TC-8 (terminal)
         from nebulix.apply import render_all

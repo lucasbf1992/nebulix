@@ -1,6 +1,6 @@
 # Roadmap
 
-Itens fora da 0.4.0, registrados para as próximas versões.
+Itens fora da 0.5.0, registrados para as próximas versões.
 
 ## 0.3.0: temas macOS Dark, macOS Light e Nebulix Light (lançada em 2026-11-20; temas, zoom da dock e tema do VS Code validados na sessão real)
 Sistema de múltiplos temas (`theme`, `nebulix theme`), macOS Dark escuro e neutro, e dois temas claros (macOS Light e Nebulix Light, escolhidos em 2026-11-20). Escolha em `nebulix theme macos-dark` e no app.
@@ -15,6 +15,9 @@ Sistema de múltiplos temas (`theme`, `nebulix theme`), macOS Dark escuro e neut
 
 ## 0.4.0: terminal acompanha o tema (lançada em 2026-11-20; validada na sessão real)
 Opacidade, cursor, fonte, margem, altura da linha e tamanho da janela por tema, perfil próprio no Ptyxis, paleta clara/escura do mesmo par, aba Terminal com prévia. Veja o CHANGELOG.
+
+## 0.5.0: conjuntos de ícones (lançada em 2026-11-20)
+WhiteSur, MacTahoe e McMojave-circle baixados sob demanda, cor do ícone seguindo o destaque, pastas do conjunto ou squircle do Nebulix, aba no app com prévia e botão Baixar, `nebulix reset --remove-icons` e cache em `~/.cache/nebulix/icons`. Veja o CHANGELOG.
 
 ## Próximos passos
 - Validar no Shell real nos temas claros: Atividades (o Shell mantém a visão geral escura), calendário, notificações e tela de bloqueio.
