@@ -45,7 +45,7 @@ nebulix config set accent=magenta variant=darker radius=10      # accent do tema
 nebulix config set window_buttons=mac topbar=solid dock_position=left
 nebulix config set wallpaper=gen-orbit        # versões geradas seguem a cor de destaque
 ```
-Chaves: `theme` (nebulix, macos-dark, macos-light, nebulix-light), `accent` (`auto`, um nome do tema ou `#RRGGBB`; Nebulix: nebulix, magenta, cyan, blue, green, amber; macOS: blue, purple, pink, red, orange, yellow, green, graphite), `variant` (dark, darker; só nos temas escuros), `radius` (6 a 20), `window_buttons` (gnome, mac), `topbar` (floating, solid, translucent), `font` (auto, keep), `dock` (macos, ubuntu), `dock_position` (bottom, left, right), `dock_icon_size`, `dock_opacity`, `icons` (whitesur, papirus, keep), `wallpaper`, `components`. O arquivo fica em `~/.config/nebulix/config.toml`.
+Chaves: `theme` (nebulix, macos-dark, macos-light, nebulix-light), `accent` (`auto`, um nome do tema ou `#RRGGBB`; Nebulix: nebulix, magenta, cyan, blue, green, amber; macOS: blue, purple, pink, red, orange, yellow, green, graphite), `variant` (dark, darker; só nos temas escuros), `radius` (6 a 20), `window_buttons` (gnome, mac), `topbar` (floating, solid, translucent), `font` (auto, keep), `vscode_theme` (keep, follow ou o id de um tema), `dock` (macos, ubuntu), `dock_position` (bottom, left, right), `dock_icon_size`, `dock_opacity`, `icons` (whitesur, papirus, keep), `wallpaper`, `components`. O arquivo fica em `~/.config/nebulix/config.toml`.
 
 ## Voltar ao padrão
 
@@ -60,7 +60,7 @@ Os dois também estão na aba **Restaurar** do app. Depois, `sudo apt remove neb
 - libadwaita só aceita troca de cores; apps Qt/KDE e snaps podem ignorar o tema GTK.
 - O Ubuntu Dock não tem ampliação nem desfoque como o macOS (o `doctor` sugere a extensão Blur my Shell).
 - O CSS do Shell passa no parser do St, mas ainda não foi conferido visualmente num Shell real; abra uma issue com screenshot se algo ficar estranho.
-- O tema do VS Code é copiado para `~/.vscode/extensions`; reinicie o editor.
+- O VS Code recebe uma extensão com os 4 temas em `~/.vscode/extensions` (também Insiders e VSCodium, se existirem). Com `vscode_theme = follow` (ou um tema específico) o Nebulix define `workbench.colorTheme` no `settings.json`, editando só essa chave (comentários e o resto ficam intactos); `undo` restaura o valor anterior e `reset` remove a chave. O padrão `keep` não mexe no `settings.json`. Reinicie o editor.
 
 ## Desenvolver
 `python3 -m unittest discover -s tests` (tudo em HOME descartável), `python3 build.py` (contraste WCAG para cada tema, destaque e variante), `./package.sh` (gera `release/`). Veja `CONTRIBUTING.md`.

@@ -3,7 +3,7 @@
 import shutil
 import subprocess
 
-from . import config, icons
+from . import config, icons, vscode
 from .apply import TESTED_GNOME, UT, gnome_major
 
 
@@ -39,6 +39,11 @@ def check():
         out.append(("info", "fonte Inter ausente (usada na interface dos temas macOS)", "sudo apt install fonts-inter"))
     if "JetBrainsMono" not in fonts.replace(" ", ""):
         out.append(("info", "fonte JetBrains Mono Nerd Font ausente", "https://www.nerdfonts.com/font-downloads (JetBrainsMono)"))
+    eds = [f.parent.parent.name for f, _ in vscode.installed_editors()]
+    if eds:
+        out.append(("ok", f"editor encontrado: {', '.join(eds)}", ""))
+    else:
+        out.append(("info", "VS Code não encontrado (o tema do editor não será ativado)", "https://code.visualstudio.com"))
     for tool, hint in (("starship", "https://starship.rs"), ("fastfetch", "sudo apt install fastfetch")):
         out.append(("ok", f"{tool} instalado", "") if shutil.which(tool) else ("info", f"{tool} não instalado", hint))
     return out

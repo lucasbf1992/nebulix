@@ -43,7 +43,31 @@ use-system-font=false
     _w(dist / "terminal/nebulix-gnome-terminal.dconf", txt)
 
 
-def vscode(P, T, dist):
+def vscode_label(theme_id):
+    from . import themes
+    th = themes.get(theme_id)
+    base = th["label"].split(" (")[0]
+    return "Nebulix Dark" if base == "Nebulix" else (base if base.startswith("Nebulix") else f"Nebulix {base}")
+
+
+def vscode(P, T, dist, theme_id=None, extra=()):
+    """Writes the VS Code extension: one colour theme per Nebulix theme (`extra` = [(id, P, T)], the active one first)."""
+    entries = [(theme_id, *_vscode_theme(P, T, theme_id))] + [(i, *_vscode_theme(p, t, i)) for i, p, t in extra]
+    d = dist / "vscode/nebulix-theme"
+    for i, tname, light, theme in entries:
+        _w(d / f"themes/{i}.json", json.dumps(theme, indent=2, ensure_ascii=False) + "\n")
+    pkg = {
+        "name": "nebulix-theme", "displayName": "Nebulix", "description": "Themes for developers: Nebulix, macOS Dark and Light.",
+        "version": P["version"], "publisher": "nebulix", "license": "MIT",
+        "engines": {"vscode": "^1.80.0"}, "categories": ["Themes"],
+        "contributes": {"themes": [{"label": tname, "uiTheme": "vs" if light else "vs-dark", "path": f"./themes/{i}.json"}
+                                   for i, tname, light, _ in entries]},
+    }
+    _w(d / "package.json", json.dumps(pkg, indent=2) + "\n")
+    _w(d / "LICENSE", MIT)
+
+
+def _vscode_theme(P, T, theme_id):
     b = T
     ui = {
         "editor.background": b["bg-0"], "editor.foreground": b["fg-0"],
@@ -114,21 +138,11 @@ def vscode(P, T, dist):
         tk(["support.type.property-name.json"], b["purple"]),
     ]
     light = P["scheme"] == "light"
-    base = P["label"].split(" (")[0]
-    tname = "Nebulix Dark" if base == "Nebulix" else (base if base.startswith("Nebulix") else f"Nebulix {base}")
-    theme = {"name": tname, "type": P["scheme"], "colors": ui, "tokenColors": tokens,
-             "semanticHighlighting": True}
-    d = dist / "vscode/nebulix-theme"
-    _w(d / "themes/nebulix-color-theme.json", json.dumps(theme, indent=2, ensure_ascii=False) + "\n")
-    pkg = {
-        "name": "nebulix-theme", "displayName": "Nebulix", "description": "Themes for developers: Nebulix, macOS Dark and Light.",
-        "version": P["version"], "publisher": "nebulix", "license": "MIT",
-        "engines": {"vscode": "^1.80.0"}, "categories": ["Themes"],
-        "contributes": {"themes": [{"label": tname, "uiTheme": "vs" if light else "vs-dark",
-                                    "path": "./themes/nebulix-color-theme.json"}]},
-    }
-    _w(d / "package.json", json.dumps(pkg, indent=2) + "\n")
-    _w(d / "LICENSE", "MIT License\n\nCopyright (c) Nebulix contributors\n\nPermission is hereby granted, free of charge, to any person obtaining a copy\nof this software and associated documentation files (the \"Software\"), to deal\nin the Software without restriction, including without limitation the rights\nto use, copy, modify, merge, publish, distribute, sublicense, and/or sell\ncopies of the Software, and to permit persons to whom the Software is\nfurnished to do so, subject to the following conditions:\n\nThe above copyright notice and this permission notice shall be included in all\ncopies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\nIMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,\nFITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE\nAUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER\nLIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,\nOUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE\nSOFTWARE.\n")
+    tname = vscode_label(theme_id)
+    return tname, light, {"name": tname, "type": P["scheme"], "colors": ui, "tokenColors": tokens, "semanticHighlighting": True}
+
+
+MIT = "MIT License\n\nCopyright (c) Nebulix contributors\n\nPermission is hereby granted, free of charge, to any person obtaining a copy\nof this software and associated documentation files (the \"Software\"), to deal\nin the Software without restriction, including without limitation the rights\nto use, copy, modify, merge, publish, distribute, sublicense, and/or sell\ncopies of the Software, and to permit persons to whom the Software is\nfurnished to do so, subject to the following conditions:\n\nThe above copyright notice and this permission notice shall be included in all\ncopies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\nIMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,\nFITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE\nAUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER\nLIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,\nOUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE\nSOFTWARE.\n"
 
 
 def nvim(P, T, dist):
@@ -167,6 +181,7 @@ def nvim(P, T, dist):
     _w(dist / "nvim/colors/nebulix.lua", "\n".join(out) + "\n")
 
 
-def generate(P, T, dist):
-    for f in (ptyxis, gnome_terminal, vscode, nvim):
+def generate(P, T, dist, theme_id="nebulix", others=()):
+    for f in (ptyxis, gnome_terminal, nvim):
         f(P, T, dist)
+    vscode(P, T, dist, theme_id, others)

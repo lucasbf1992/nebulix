@@ -6,7 +6,7 @@ import subprocess
 import time
 from pathlib import Path
 
-from . import icons, paths
+from . import icons, paths, vscode
 from .apply import TOUCHED_KEYS
 from .state import State
 
@@ -44,6 +44,8 @@ def restore(mode="undo", log=print, remove_icons=False, dry=False):
             if not dry:
                 subprocess.run(["dconf", "write", "/org/gnome/terminal/legacy/profiles:/list", old])
                 subprocess.run(["dconf", "reset", "-f", f"/org/gnome/terminal/legacy/profiles:/:{u}/"])
+        elif e.startswith("vscode:"):
+            vscode.restore_entry(e, mode, dry, log)
         elif e.startswith("ext:") and shutil.which("gnome-extensions"):
             if not dry:
                 subprocess.run(["gnome-extensions", "disable", e[4:]], capture_output=True)

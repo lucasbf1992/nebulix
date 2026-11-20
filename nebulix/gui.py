@@ -8,7 +8,7 @@ gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
 from gi.repository import Adw, Gdk, GLib, Gtk  # noqa: E402
 
-from . import __version__, config, doctor, icons, paths, themes  # noqa: E402
+from . import __version__, config, doctor, gen, icons, paths, themes  # noqa: E402
 from .apply import apply  # noqa: E402
 from .restore import restore  # noqa: E402
 
@@ -21,6 +21,7 @@ LABELS = {
     "dock": {"macos": "Estilo macOS (flutuante, centralizada)", "ubuntu": "Não alterar (padrão do Ubuntu)"},
     "dock_position": {"bottom": "Embaixo", "left": "Esquerda", "right": "Direita"},
     "icons": {"whitesur": "Estilo macOS (WhiteSur, variante do tema)", "papirus": "Papirus (claro ou escuro, conforme o tema)", "keep": "Não alterar"},
+    "vscode_theme": {"keep": "Não alterar", "follow": "Seguir o tema do Nebulix", **{t: gen.vscode_label(t) for t in config.CHOICES["theme"]}},
     "font": {"auto": "Do tema (Inter nos temas macOS, se instalada)", "keep": "Não alterar"},
     "wallpaper": {"orbit": "Órbita", "horizon": "Horizonte", "circuit": "Circuito", "code": "Código", "gen-orbit": "Órbita (gerada, segue o destaque)", "gen-horizon": "Horizonte (gerado, segue o destaque)", "gen-circuit": "Circuito (gerado, segue o destaque)", "gen-code": "Código (gerado, segue o destaque)", "none": "Não alterar"},
     "wallpaper_size": {"1080p": "1080p", "1440p": "1440p", "4k": "4K", "ultrawide": "Ultrawide 21:9"},
@@ -255,6 +256,9 @@ class SettingsWindow(Adw.PreferencesWindow):
             r.connect("notify::active", toggled)
             g.add(r)
         page.add(g)
+        gv = Adw.PreferencesGroup(title="VS Code", description="Ativa o tema no editor (workbench.colorTheme em settings.json, só essa chave; o desfazer restaura o valor anterior). Requer o componente VS Code ligado.")
+        self.combo(gv, "Tema do VS Code", "vscode_theme")
+        page.add(gv)
         return page
 
     def _confirm(self, heading, body, label, cb, destructive=True):

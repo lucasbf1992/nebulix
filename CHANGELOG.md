@@ -5,6 +5,7 @@
 - **macOS Light e Nebulix Light:** `color-scheme = prefer-light`, GTK 3/4 e Shell com o stylesheet claro, tema instalado em `Nebulix-Light`; terminal, VS Code, Neovim, Starship, btop e fastfetch acompanham a paleta.
 - Contraste WCAG checado para todas as combinações tema x destaque x variante (`build.py` e testes), inclusive cores `#RRGGBB` arbitrárias.
 - Ícones WhiteSur passam a ter a variante (azul ou roxa) e o fundo (claro ou escuro) do tema; instalação continua pinada com sha256.
+- **Tema do VS Code:** a extensão traz um tema por tema do Nebulix (`uiTheme` vs-dark ou vs) e a nova chave `vscode_theme` (`keep`, `follow` ou um tema) define `workbench.colorTheme` no `settings.json` do Code, Insiders e VSCodium com edição pontual (JSONC preservado), restaurável por `undo`/`reset`. Opção no app (aba Componentes) e `nebulix doctor` avisa se o editor não existe.
 - Nova chave `font` (`auto`/`keep`): Inter nos temas macOS, quando instalada.
 - fastfetch passa a seguir a cor de destaque. `nebulix undo` não deixa mais um `gtk.css` vazio quando ele não existia.
 - Mínima mudança visual no tema roxo: botões de alternância do Shell e botão padrão dos diálogos usam as mesmas cores de destaque já usadas no resto.

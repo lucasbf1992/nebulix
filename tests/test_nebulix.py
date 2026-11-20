@@ -239,7 +239,11 @@ class TestThemes(Sandbox):
         self.assertIn("vim.o.background = 'light'", (out / "nvim/colors/nebulix.lua").read_text())
         pkg = json.loads((out / "vscode/nebulix-theme/package.json").read_text())
         self.assertEqual(pkg["contributes"]["themes"][0]["uiTheme"], "vs")
-        theme = json.loads((out / "vscode/nebulix-theme/themes/nebulix-color-theme.json").read_text())
+        ui = {t["label"]: t["uiTheme"] for t in pkg["contributes"]["themes"]}
+        self.assertEqual(ui, {"Nebulix macOS Light": "vs", "Nebulix Dark": "vs-dark", "Nebulix macOS Dark": "vs-dark", "Nebulix Light": "vs"})
+        for t in pkg["contributes"]["themes"]:
+            self.assertTrue((out / "vscode/nebulix-theme" / t["path"]).exists())
+        theme = json.loads((out / "vscode/nebulix-theme/themes/macos-light.json").read_text())
         self.assertEqual((theme["type"], theme["colors"]["editor.background"]), ("light", "#FFFFFF"))
         self.assertIn("#FFFFFF", (out / "btop/nebulix.theme").read_text())
         self.assertIn("Name=Nebulix-Light", (out / "index.theme").read_text())
@@ -340,6 +344,100 @@ class TestThemes(Sandbox):
                 prov.connect("parsing-error", lambda _p, sec, e: errs.append(e.message))
                 prov.load_from_string((out / "gtk-4.0" / f).read_text())
                 self.assertEqual(errs, [], f"{th}/{f}")
+
+
+class TestVscodeSetting(Sandbox):
+    KEY = "workbench.colorTheme"
+
+    def cfg(self, **kw):
+        from nebulix import config
+        base = {"wallpaper": "none", "vscode_theme": "follow"}
+        base.update(kw)
+        return config.validate(base)
+
+    def settings(self, name="Code"):
+        return self.home / ".config" / name / "User" / "settings.json"
+
+    def run_apply(self, **kw):
+        from nebulix.apply import apply
+        apply(self.cfg(**kw), log=lambda *_: None, only=["vscode"])
+
+    def test_editor_missing_touches_nothing(self):
+        self.run_apply()
+        self.assertFalse((self.home / ".config/Code").exists())
+
+    def test_creates_file_and_undo_removes_it(self):
+        from nebulix.restore import restore
+        self.settings().parent.mkdir(parents=True)
+        before = self.snapshot()
+        self.run_apply()
+        self.assertEqual(json.loads(self.settings().read_text()), {self.KEY: "Nebulix Dark"})
+        restore("undo", log=lambda *_: None)
+        self.assertEqual(self.snapshot(), before)
+
+    def test_jsonc_comments_and_other_keys_survive_the_cycle(self):
+        from nebulix import vscode
+        from nebulix.restore import restore
+        orig = '// meu editor\n{\n    /* fonte */ "editor.fontSize": 14, // grande\n    "files.autoSave": "afterDelay",\n}\n'
+        self.settings().parent.mkdir(parents=True)
+        self.settings().write_text(orig)
+        self.run_apply(theme="macos-dark")
+        txt = self.settings().read_text()
+        self.assertEqual(vscode.get(txt), "Nebulix macOS Dark")
+        for keep in ("// meu editor", "/* fonte */", "// grande", '"editor.fontSize": 14', '"files.autoSave": "afterDelay"'):
+            self.assertIn(keep, txt)
+        restore("undo", log=lambda *_: None)
+        self.assertEqual(self.settings().read_text(), orig.replace('"files.autoSave": "afterDelay",\n}', '"files.autoSave": "afterDelay",\n}'))
+
+    def test_existing_key_restored_on_undo_removed_on_reset(self):
+        from nebulix import vscode
+        from nebulix.restore import restore
+        orig = '{\n  "workbench.colorTheme": "Monokai", // meu\n  "a": 1\n}\n'
+        for mode in ("undo", "reset"):
+            self.settings().parent.mkdir(parents=True, exist_ok=True)
+            self.settings().write_text(orig)
+            self.run_apply()
+            self.run_apply(theme="nebulix-light")  # re-apply must keep the ORIGINAL previous value
+            self.assertEqual(vscode.get(self.settings().read_text()), "Nebulix Light")
+            restore(mode, log=lambda *_: None)
+            txt = self.settings().read_text()
+            if mode == "undo":
+                self.assertEqual(txt, orig)
+            else:
+                self.assertIsNone(vscode.get(txt))
+                self.assertIn('"a": 1', txt)
+            shutil.rmtree(self.home / ".local", ignore_errors=True)
+
+    def test_specific_theme_and_keep_releases(self):
+        from nebulix import vscode
+        self.settings().parent.mkdir(parents=True)
+        self.settings().write_text('{"workbench.colorTheme": "Mine"}')
+        self.run_apply(vscode_theme="macos-light")
+        self.assertEqual(vscode.get(self.settings().read_text()), "Nebulix macOS Light")
+        self.run_apply(vscode_theme="keep")
+        self.assertEqual(vscode.get(self.settings().read_text()), "Mine")
+
+    def test_insiders_and_codium_and_invalid_file(self):
+        from nebulix import vscode
+        for n in ("Code - Insiders", "VSCodium"):
+            self.settings(n).parent.mkdir(parents=True)
+        self.settings().parent.mkdir(parents=True)
+        self.settings().write_text("not json at all")
+        self.run_apply()
+        self.assertEqual(self.settings().read_text(), "not json at all")  # left alone
+        self.assertEqual(vscode.get(self.settings("VSCodium").read_text()), "Nebulix Dark")
+        self.assertEqual(vscode.get(self.settings("Code - Insiders").read_text()), "Nebulix Dark")
+
+    def test_dry_run_and_empty_object_insert(self):
+        from nebulix import vscode
+        from nebulix.apply import apply
+        self.settings().parent.mkdir(parents=True)
+        self.settings().write_text("{}")
+        apply(self.cfg(), dry=True, log=lambda *_: None, only=["vscode"])
+        self.assertEqual(self.settings().read_text(), "{}")
+        self.assertEqual(json.loads(vscode.set_key("{}", "X")), {self.KEY: "X"})
+        self.assertEqual(json.loads(vscode.set_key('{"a": 1}', "X")), {"a": 1, self.KEY: "X"})
+        self.assertEqual(json.loads(vscode.remove_key('{"a": 1, "workbench.colorTheme": "X"}')), {"a": 1})
 
 
 class TestCli(Sandbox):

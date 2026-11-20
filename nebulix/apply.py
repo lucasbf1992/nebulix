@@ -9,7 +9,7 @@ import tempfile
 import uuid
 from pathlib import Path
 
-from . import __version__, config, gen, icons, paths, palette, render, themes, wallpapers
+from . import __version__, config, gen, icons, paths, palette, render, themes, vscode, wallpapers
 from .state import State, gs
 
 UT = "user-theme@gnome-shell-extensions.gcampax.github.com"
@@ -44,7 +44,9 @@ def render_all(cfg, out: Path, log=print):
             dest.write_text(render.render(f.read_text(), t, cfg, str(f)))
         except UnicodeDecodeError:
             shutil.copy2(f, dest)
-    gen.generate(P, t, out)
+    others = [(i, *palette.tokens(dict(cfg, theme=i, accent="auto", variant="dark" if i != cfg["theme"] else cfg["variant"])))
+              for i in config.CHOICES["theme"] if i != cfg["theme"]]
+    gen.generate(P, t, out, cfg["theme"], others)
     return t
 
 
@@ -153,8 +155,12 @@ def apply(cfg=None, dry=False, log=print, install_icons=False, only=None):
             st.put_text((stage / "nvim/colors/nebulix.lua").read_text(), conf / "nvim/colors/nebulix.lua")
         if "vscode" in comps:
             new = home / ".vscode/extensions" / f"nebulix.nebulix-theme-{__version__}"
-            _forget(st, lambda e: ".vscode/extensions/nebulix.nebulix-theme-" in e and e != str(new))
+            _forget(st, lambda e: "/extensions/nebulix.nebulix-theme-" in e and not e.endswith(f"nebulix.nebulix-theme-{__version__}"))
             st.put_tree(stage / "vscode/nebulix-theme", new)
+            for _f, ext in vscode.installed_editors():
+                if ext != home / ".vscode":  # Insiders / VSCodium keep extensions elsewhere
+                    st.put_tree(stage / "vscode/nebulix-theme", ext / "extensions" / new.name)
+            _vscode_setting(st, cfg)
         if "wallpaper" in comps:
             _wallpaper(st, cfg, t, stage, dry, log)
         if "icons" in comps:
@@ -273,6 +279,14 @@ def _wallpaper(st, cfg, t, stage, dry, log):
     st.gs_set("org.gnome.desktop.background", "picture-uri", uri)
     st.gs_set("org.gnome.desktop.background", "picture-uri-dark", uri)
     st.gs_set("org.gnome.desktop.screensaver", "picture-uri", uri)
+
+
+def _vscode_setting(st, cfg):
+    v = cfg["vscode_theme"]
+    if v == "keep":
+        vscode.release(st)
+    else:
+        vscode.apply_theme(st, gen.vscode_label(cfg["theme"] if v == "follow" else v))
 
 
 def has_font(family):

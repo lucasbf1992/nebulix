@@ -15,13 +15,14 @@ CHOICES = {
     "dock_position": ("bottom", "left", "right"),
     "icons": ("whitesur", "papirus", "keep"),
     "font": ("auto", "keep"),
+    "vscode_theme": ("keep", "follow", "nebulix", "macos-dark", "macos-light", "nebulix-light"),
     "wallpaper": ("orbit", "horizon", "circuit", "code", "gen-orbit", "gen-horizon", "gen-circuit", "gen-code", "none"),
     "wallpaper_size": ("1080p", "1440p", "4k", "ultrawide"),
 }
 DEFAULTS = {
     "theme": "nebulix", "accent": "auto", "variant": "dark", "radius": 14, "window_buttons": "gnome", "topbar": "floating",
     "dock": "macos", "dock_position": "bottom", "dock_icon_size": 48, "dock_opacity": 75,
-    "icons": "whitesur", "font": "auto", "wallpaper": "orbit", "wallpaper_size": "4k",
+    "icons": "whitesur", "font": "auto", "vscode_theme": "keep", "wallpaper": "orbit", "wallpaper_size": "4k",
     "components": list(COMPONENTS),
 }
 
