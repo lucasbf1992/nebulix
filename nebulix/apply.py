@@ -10,7 +10,7 @@ import uuid
 from pathlib import Path
 
 from . import __version__, config, gen, icons, paths, palette, render, themes, vscode, wallpapers
-from .state import State, gs, set_extension_enabled
+from .state import State, gs, lock, set_extension_enabled
 
 UT = "user-theme@gnome-shell-extensions.gcampax.github.com"
 UBUNTU_DOCK = "ubuntu-dock@ubuntu.com"
@@ -94,7 +94,12 @@ def gnome_major():
     return m.group(1) if m else None
 
 
-def apply(cfg=None, dry=False, log=print, install_icons=False, only=None):
+def apply(*a, **kw):
+    with lock():
+        return _apply(*a, **kw)
+
+
+def _apply(cfg=None, dry=False, log=print, install_icons=False, only=None):
     cfg = config.validate(cfg or config.load())
     comps = set(only or cfg["components"])
     st = State(dry=dry, log=log)
@@ -160,9 +165,11 @@ def apply(cfg=None, dry=False, log=print, install_icons=False, only=None):
             new = home / ".vscode/extensions" / f"nebulix.nebulix-theme-{__version__}"
             _forget(st, lambda e: "/extensions/nebulix.nebulix-theme-" in e and not e.endswith(f"nebulix.nebulix-theme-{__version__}"))
             st.put_tree(stage / "vscode/nebulix-theme", new)
+            vscode.register(st, home / ".vscode", new.name, __version__)
             for _f, ext in vscode.installed_editors():
                 if ext != home / ".vscode":  # Insiders / VSCodium keep extensions elsewhere
                     st.put_tree(stage / "vscode/nebulix-theme", ext / "extensions" / new.name)
+                    vscode.register(st, ext, new.name, __version__)
             _vscode_setting(st, cfg)
         if "wallpaper" in comps:
             _wallpaper(st, cfg, t, stage, dry, log)

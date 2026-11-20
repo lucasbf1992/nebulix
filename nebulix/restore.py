@@ -8,10 +8,15 @@ from pathlib import Path
 
 from . import icons, paths, vscode
 from .apply import TOUCHED_KEYS
-from .state import State, set_extension_enabled
+from .state import State, lock, set_extension_enabled
 
 
-def restore(mode="undo", log=print, remove_icons=False, dry=False):
+def restore(*a, **kw):
+    with lock():
+        return _restore(*a, **kw)
+
+
+def _restore(mode="undo", log=print, remove_icons=False, dry=False):
     """mode='undo': gsettings back to the values saved before Nebulix.
     mode='reset': gsettings reset to the system defaults. Both remove Nebulix files and restore overwritten originals."""
     assert mode in ("undo", "reset")
@@ -44,6 +49,8 @@ def restore(mode="undo", log=print, remove_icons=False, dry=False):
             if not dry:
                 subprocess.run(["dconf", "write", "/org/gnome/terminal/legacy/profiles:/list", old])
                 subprocess.run(["dconf", "reset", "-f", f"/org/gnome/terminal/legacy/profiles:/:{u}/"])
+        elif e.startswith("vscext:"):
+            vscode.unregister(e, dry, log)
         elif e.startswith("vscode:"):
             vscode.restore_entry(e, mode, dry, log)
         elif e.startswith("ext:"):

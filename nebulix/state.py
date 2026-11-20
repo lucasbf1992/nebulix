@@ -1,9 +1,13 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 """Install state: manifest, backups of overwritten files and gsettings values (same format as 0.1)."""
+import contextlib
+import fcntl
+import hashlib
 import os
 import re
 import shutil
 import subprocess
+import tempfile
 from pathlib import Path
 
 from . import paths
@@ -14,6 +18,19 @@ def gs(*args, check=False):
         return None
     r = subprocess.run(["gsettings", *args], capture_output=True, text=True)
     return r.stdout.strip() if r.returncode == 0 else None
+
+
+@contextlib.contextmanager
+def lock():
+    """One apply/restore at a time per user (the app, the CLI and a second window must not overlap)."""
+    # outside HOME, keyed by it, so the lock never shows up as a file Nebulix left behind
+    key = hashlib.sha1(str(paths.home()).encode()).hexdigest()[:12]
+    fd = os.open(Path(tempfile.gettempdir()) / f"nebulix-{os.getuid()}-{key}.lock", os.O_CREAT | os.O_RDWR, 0o600)
+    try:
+        fcntl.flock(fd, fcntl.LOCK_EX)
+        yield
+    finally:
+        os.close(fd)
 
 
 class State:
@@ -77,10 +94,11 @@ class State:
         if (dest.exists() or dest.is_symlink()) and d not in self.manifest and d not in self.backed:
             tgt = self.bk / d.lstrip("/")
             tgt.parent.mkdir(parents=True, exist_ok=True)
-            if dest.is_dir():
-                shutil.copytree(dest, tgt, symlinks=True)
-            else:
-                shutil.copy2(dest, tgt, follow_symlinks=False)
+            if not (tgt.exists() or tgt.is_symlink()):  # an older copy is the original: never overwrite it
+                if dest.is_dir():
+                    shutil.copytree(dest, tgt, symlinks=True)
+                else:
+                    shutil.copy2(dest, tgt, follow_symlinks=False)
             self.backed.append(d)
 
     def put_tracked_dir_file(self, text, dest):

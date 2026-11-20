@@ -1,5 +1,6 @@
 # Changelog
 ## 0.3.0 (em desenvolvimento)
+- **Correções do primeiro teste real:** trocar de tema várias vezes seguidas no app não gera mais "Arquivo existe" (applies serializados e travados por usuário; o app junta pedidos rápidos); os ícones da dock não ficam mais invisíveis ao trocar o tema com o zoom ligado (a extensão restaura os ícones quando o Shell os recria); a extensão do VS Code é registrada em `extensions.json` (antes o VS Code a marcava como removida/incompatível), e `undo`/`reset` removem o registro.
 - **Sistema de temas:** nova chave `theme` (`nebulix`, `macos-dark`, `macos-light`, `nebulix-light`), `nebulix theme [NOME]` e seletor na aba Aparência. Escolher um tema aplica um pacote (destaque, botões da janela, barra, cantos, ícones, dock, fonte) e cada item continua ajustável. `accent = "auto"` usa o destaque padrão do tema.
 - **macOS Dark:** cinzas neutros, azul `#0A84FF` (fundo de seleção escurecido para 4.5:1 com texto branco), semáforo à esquerda, barra translúcida (nova opção `topbar = translucent`), cantos 10 px, ícones WhiteSur azuis, Inter. Destaques macOS: azul, roxo, rosa, vermelho, laranja, amarelo, verde e grafite.
 - **macOS Light e Nebulix Light:** `color-scheme = prefer-light`, GTK 3/4 e Shell com o stylesheet claro, tema instalado em `Nebulix-Light`; terminal, VS Code, Neovim, Starship, btop e fastfetch acompanham a paleta.

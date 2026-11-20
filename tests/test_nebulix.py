@@ -362,6 +362,26 @@ class TestVscodeSetting(Sandbox):
         from nebulix.apply import apply
         apply(self.cfg(**kw), log=lambda *_: None, only=["vscode"])
 
+    def test_extension_is_registered_and_old_entry_replaced(self):
+        from nebulix import __version__
+        from nebulix.restore import restore
+        ext = self.home / ".vscode/extensions"
+        ext.mkdir(parents=True)
+        (ext / "extensions.json").write_text(json.dumps([
+            {"identifier": {"id": "other.thing"}, "version": "1", "relativeLocation": "other.thing-1"},
+            {"identifier": {"id": "nebulix.nebulix-theme"}, "version": "0.2.0", "relativeLocation": "nebulix.nebulix-theme-0.2.0"}]))
+        (ext / ".obsolete").write_text(json.dumps({"nebulix.nebulix-theme-%s" % __version__: True, "x.y-1": True}))
+        self.run_apply()
+        reg = json.loads((ext / "extensions.json").read_text())
+        ours = [e for e in reg if e["identifier"]["id"] == "nebulix.nebulix-theme"]
+        self.assertEqual([e["version"] for e in ours], [__version__])
+        self.assertEqual(ours[0]["relativeLocation"], f"nebulix.nebulix-theme-{__version__}")
+        self.assertTrue(Path(ours[0]["location"]["fsPath"]).is_dir())
+        self.assertEqual(json.loads((ext / ".obsolete").read_text()), {"x.y-1": True})
+        restore("undo", log=lambda *_: None)
+        reg = json.loads((ext / "extensions.json").read_text())
+        self.assertEqual([e["identifier"]["id"] for e in reg], ["other.thing"])
+
     def test_editor_missing_touches_nothing(self):
         self.run_apply()
         self.assertFalse((self.home / ".config/Code").exists())
@@ -590,3 +610,34 @@ class TestDockZoom(Sandbox):
         self.assertIn("50", meta["shell-version"])
         self.assertIn("SPDX-License-Identifier: GPL-3.0-or-later", (d / "extension.js").read_text())
 
+
+
+class TestConcurrentApply(Sandbox):
+    def test_parallel_applies_do_not_collide(self):
+        import threading
+        from nebulix import config
+        from nebulix.apply import apply
+        errs = []
+
+        def run(theme):
+            try:
+                cfg = config.apply_theme(config.validate({"wallpaper": "none", "icons": "papirus"}), theme)
+                apply(cfg, log=lambda *_: None)
+            except Exception as e:  # noqa: BLE001
+                errs.append(repr(e))
+        ths = [threading.Thread(target=run, args=(x,)) for x in ("nebulix-light", "macos-dark", "nebulix-light", "macos-light")]
+        [x.start() for x in ths]
+        [x.join() for x in ths]
+        self.assertEqual(errs, [])
+
+    def test_existing_backup_target_is_not_an_error(self):
+        from nebulix.state import State
+        st = State(log=lambda *_: None)
+        dest = self.home / ".local/share/gnome-shell/extensions/x"
+        dest.mkdir(parents=True)
+        (dest / "a").write_text("1")
+        tgt = st.bk / str(dest).lstrip("/")
+        tgt.mkdir(parents=True)
+        (tgt / "a").write_text("original")
+        st._backup(dest)
+        self.assertEqual((tgt / "a").read_text(), "original")

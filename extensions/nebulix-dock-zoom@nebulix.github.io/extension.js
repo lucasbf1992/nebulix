@@ -44,7 +44,10 @@ class DockZoom {
             this._destroyId = 0;
             this.destroy();
         });
+        const dashBox = dock.dash?._box;
         this._ids = [
+            ...(dashBox ? [[dashBox, dashBox.connect('child-added', () => this._releaseAll())],
+                           [dashBox, dashBox.connect('child-removed', () => this._releaseAll())]] : []),
             [box, box.connect('notify::hover', () => this._onHover())],
             [box, box.connect('motion-event', () => { this._onHover(); return Clutter.EVENT_PROPAGATE; })],
         ];
@@ -52,6 +55,7 @@ class DockZoom {
         // view clip everything that leaves their allocation, so scaling the real icons is not an option.
         this._overlay = null;
         this._clones = new Map();
+        this._themeId = St.ThemeContext.get_for_stage(global.stage).connect('changed', () => this._releaseAll());
     }
 
     _items() {
@@ -74,6 +78,18 @@ class DockZoom {
     }
 
     _step() {
+        try {
+            return this._doStep();
+        } catch (e) {
+            // never leave an icon hidden behind a clone: drop everything and stop animating
+            logError(e, 'nebulix-dock-zoom: step failed');
+            this._tick = 0;
+            this._releaseAll();
+            return GLib.SOURCE_REMOVE;
+        }
+    }
+
+    _doStep() {
         const now = GLib.get_monotonic_time();
         const dt = Math.min(100, (now - this._last) / 1000);
         this._last = now;
@@ -144,6 +160,9 @@ class DockZoom {
         c.set_size(src.width, src.height);
         this._overlay.add_child(c);
         src.opacity = 0;
+        // if the real icon (or the clone) is destroyed from outside, never leave the other one hidden
+        c._nbxSrc = src;
+        c._nbxSrcId = src.connect('destroy', () => { c._nbxSrcId = 0; this._release(item); });
         this._clones.set(item, c);
         return c;
     }
@@ -174,21 +193,51 @@ class DockZoom {
     _release(item) {
         const c = this._clones.get(item);
         this._clones.delete(item);
-        try {
-            c?.destroy();
-        } catch (_e) { /* already gone with the dock */ }
+        if (c) {
+            const src = c._nbxSrc;
+            try {
+                if (src && c._nbxSrcId)
+                    src.disconnect(c._nbxSrcId);
+            } catch (_e) { /* source already destroyed */ }
+            try {
+                if (src)
+                    src.opacity = 255;
+            } catch (_e) { /* source already destroyed */ }
+            try {
+                c.destroy();
+            } catch (_e) { /* already gone with the dock */ }
+        }
         if (!this._dead) {
-            if (item.child)
-                item.child.opacity = 255;
-            if (item.label) {
-                item.label.translation_x = 0;
-                item.label.translation_y = 0;
-            }
+            try {
+                if (item.child)
+                    item.child.opacity = 255;
+                if (item.label) {
+                    item.label.translation_x = 0;
+                    item.label.translation_y = 0;
+                }
+            } catch (_e) { /* item disposed while the theme reloaded */ }
         }
         if (this._clones.size === 0 && this._overlay) {
-            this._overlay.destroy();
+            try {
+                this._overlay.destroy();
+            } catch (_e) { /* ignore */ }
             this._overlay = null;
         }
+    }
+
+    _releaseAll() {
+        for (const it of [...this._clones.keys()])
+            this._release(it);
+        this._state.clear();
+        if (this._dead)
+            return;
+        // belt and braces: every icon the dash currently holds must be visible
+        try {
+            for (const it of this._items()) {
+                if (it.child && it.child.opacity !== 255)
+                    it.child.opacity = 255;
+            }
+        } catch (_e) { /* dash disposed while the theme reloaded */ }
     }
 
     destroy() {
@@ -198,15 +247,17 @@ class DockZoom {
         if (this._tick)
             GLib.source_remove(this._tick);
         this._tick = 0;
+        if (this._themeId) {
+            St.ThemeContext.get_for_stage(global.stage).disconnect(this._themeId);
+            this._themeId = 0;
+        }
         if (!this._dead) {
             for (const [obj, id] of this._ids)
                 obj.disconnect(id);
             if (this._destroyId)
                 this._dock.disconnect(this._destroyId);
         }
-        for (const it of [...this._clones.keys()])
-            this._release(it);
-        this._state.clear();
+        this._releaseAll();
     }
 }
 
@@ -252,6 +303,11 @@ export default class NebulixDockZoom extends Extension {
         for (const d of docks) {
             if (!this._zooms.has(d) && d._box && d.dash)
                 this._zooms.set(d, new DockZoom(d, () => this._factor));
+        }
+        // self-heal: an idle dock never has hidden icons
+        for (const z of this._zooms.values()) {
+            if (!z._tick && z._clones.size === 0)
+                z._releaseAll();
         }
     }
 

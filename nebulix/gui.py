@@ -36,6 +36,7 @@ class SettingsWindow(Adw.PreferencesWindow):
         super().__init__(application=app, title="Nebulix", default_width=720, default_height=780, search_enabled=False)
         self.cfg = config.load()
         self._timer = None
+        self._running, self._pending, self._qlock = False, None, threading.Lock()
         self._css = Gtk.CssProvider()
         Gtk.StyleContext.add_provider_for_display(Gdk.Display.get_default(), self._css, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
         self.rows = {}  # config key -> (row, options) so a theme change can refresh every control
@@ -95,17 +96,37 @@ class SettingsWindow(Adw.PreferencesWindow):
         self._timer = GLib.timeout_add(500, self._apply_now)
 
     def _apply_now(self, only=None):
+        """Applies never overlap: while one runs, only the most recent request is kept and runs right after."""
         self._timer = None
-        cfg = dict(self.cfg)
+        with self._qlock:
+            prev = self._pending
+            if prev and (prev[1] is None or only is None):
+                only = None  # a full apply that is still queued must not shrink to a partial one
+            elif prev:
+                only = sorted({*prev[1], *only})
+            self._pending = (dict(self.cfg), only)
+            if self._running:
+                return False
+            self._running = True
 
         def work():
-            err = None
-            try:
-                apply(cfg, only=only, log=lambda *_: None)
-            except Exception as e:  # surface any failure to the user
-                err = f"Erro ao aplicar: {e}"
-            GLib.idle_add(self.toast, err or "Aplicado", bool(err))
-            GLib.idle_add(self._refresh_status)
+            while True:
+                with self._qlock:
+                    cfg, only_ = self._pending
+                    self._pending = None
+                err = None
+                try:
+                    apply(cfg, only=only_, log=lambda *_: None)
+                except Exception as e:  # surface any failure to the user
+                    err = f"Erro ao aplicar: {e}"
+                with self._qlock:
+                    done = self._pending is None
+                    if done:
+                        self._running = False
+                if done:
+                    GLib.idle_add(self.toast, err or "Aplicado", bool(err))
+                    GLib.idle_add(self._refresh_status)
+                    return
         threading.Thread(target=work, daemon=True).start()
         return False
 

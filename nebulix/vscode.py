@@ -152,3 +152,69 @@ def restore_entry(entry, mode, dry=False, log=print):
         f.unlink()  # we created the file and nothing else lives in it
     else:
         f.write_text(new)
+
+
+# ---- extension registry ----
+# Current VS Code only loads extensions listed in <extensions dir>/extensions.json (and not in .obsolete):
+# a folder copied there without being registered is marked "removed" and shows up as incompatible.
+EXT_ID = "nebulix.nebulix-theme"
+
+
+def _entry(ext_dir, folder, version):
+    path = str(Path(ext_dir) / folder)
+    return {"identifier": {"id": EXT_ID}, "version": version,
+            "location": {"$mid": 1, "fsPath": path, "external": "file://" + path, "path": path, "scheme": "file"},
+            "relativeLocation": folder, "metadata": {"installedTimestamp": 0, "pinned": False, "source": "vsix"}}
+
+
+def _load(f):
+    try:
+        data = json.loads(f.read_text())
+        return data if isinstance(data, list) else []
+    except (OSError, ValueError):
+        return []
+
+
+def _is_ours(e):
+    return isinstance(e, dict) and str(e.get("identifier", {}).get("id", "")).lower() == EXT_ID
+
+
+def _clean_obsolete(ext_dir):
+    ob = Path(ext_dir) / ".obsolete"
+    try:
+        d = json.loads(ob.read_text())
+    except (OSError, ValueError):
+        return
+    keep = {k: v for k, v in d.items() if not k.lower().startswith(EXT_ID + "-")}
+    if keep != d:
+        ob.write_text(json.dumps(keep))
+
+
+def register(st, ext_dir, folder, version):
+    """List the extension folder in extensions.json (replacing older Nebulix entries) and clear its .obsolete mark."""
+    ext_dir = Path(ext_dir)
+    f = ext_dir / "extensions" / "extensions.json"
+    st.log(f"→ {f} (registro da extensão {version})")
+    if st.dry:
+        return
+    existed = f.exists()
+    data = [e for e in _load(f) if not _is_ours(e)] + [_entry(f.parent, folder, version)]
+    f.parent.mkdir(parents=True, exist_ok=True)
+    f.write_text(json.dumps(data))
+    _clean_obsolete(f.parent)
+    if not any(m.startswith(f"vscext:{f}\t") for m in st.manifest):
+        st.manifest.append(f"vscext:{f}\t{int(existed)}")
+
+
+def unregister(entry, dry=False, log=print):
+    path, _, existed = entry[len("vscext:"):].partition("\t")
+    f = Path(path)
+    log(f"remove o registro de {EXT_ID} em {f}")
+    if dry or not f.exists():
+        return
+    data = _load(f)
+    keep = [e for e in data if not _is_ours(e)]
+    if not keep and existed == "0":
+        f.unlink()  # we created it and nothing else lives in it
+    elif keep != data:
+        f.write_text(json.dumps(keep))
