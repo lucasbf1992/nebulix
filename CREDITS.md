@@ -11,4 +11,4 @@ Nada abaixo é redistribuído no pacote; é instalado, baixado ou lido do sistem
 | Inter / JetBrains Mono Nerd Font | fontes (instalação manual) | OFL-1.1 |
 | User Themes (`gnome-shell-extensions`) | necessária para o tema do Shell | GPL-2.0+ |
 
-Os wallpapers prontos em `images/wallpapers` são arte do autor do projeto, publicada sob CC BY-SA 4.0.
+Os wallpapers prontos em `images/wallpapers` foram gerados com o ChatGPT (OpenAI) pelo autor do projeto. Estão sujeitos aos termos de uso da OpenAI e, conforme a jurisdição, podem não ter copyright protegível; são oferecidos sob CC BY-SA 4.0 no que for protegível, sem garantia. Os wallpapers gerados em código (`gen-*`) são CC BY-SA 4.0 sem ressalva.

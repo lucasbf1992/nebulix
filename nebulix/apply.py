@@ -148,10 +148,22 @@ def apply(cfg=None, dry=False, log=print, install_icons=False, only=None):
         if "icons" in comps:
             _icons(st, cfg, t, stage, dry, install_icons, log)
         st.save()
+        _report_missing(st, log)
     finally:
         shutil.rmtree(stage, ignore_errors=True)
     log("ok" if not dry else "dry-run: nada foi alterado.")
     return st
+
+
+def _report_missing(st, log):
+    if not st.missing:
+        return
+    log("")
+    log("┌─ Requisitos faltando (o resto foi aplicado) ─────────────")
+    for msg, fix in st.missing:
+        log(f"│ ! {msg}")
+        log(f"│   → {fix}")
+    log("└───────────────────────────────────────────────────────────")
 
 
 def _gtk4_block(st, g4: Path):
@@ -172,7 +184,7 @@ def _shell_enable(st, dry, log):
         return
     lst = subprocess.run(["gnome-extensions", "list"], capture_output=True, text=True).stdout.split()
     if UT not in lst:
-        log("! extensão User Themes ausente: sudo apt install gnome-shell-extensions")
+        st.missing.append(("extensão User Themes ausente (necessária para o tema do Shell)", "sudo apt install gnome-shell-extensions"))
         return
     if dry:
         return
@@ -258,7 +270,7 @@ def _icons(st, cfg, t, stage, dry, install, log):
         if icons.has_theme("Papirus-Dark"):
             st.gs_set(IFACE, "icon-theme", "'Papirus-Dark'")
         else:
-            log("! Papirus ausente: sudo apt install papirus-icon-theme")
+            st.missing.append(("Papirus-Dark ausente", "sudo apt install papirus-icon-theme"))
         return
     if not icons.has_theme(icons.BASE):
         if install and not dry:
@@ -267,7 +279,7 @@ def _icons(st, cfg, t, stage, dry, install, log):
             except Exception as e:  # network or checksum failure: fall back to Papirus
                 log(f"! WhiteSur indisponível ({e}); usando Papirus")
         else:
-            log("! WhiteSur não instalado: rode `nebulix icons install` (baixa ~7 MB, GPL-3.0). Usando Papirus por enquanto.")
+            st.missing.append(("ícones estilo macOS (WhiteSur) não instalados; usando Papirus por enquanto", "nebulix icons install   (baixa ~7 MB, GPL-3.0)"))
     root = icons.write_overlay(t, stage / "icons" / icons.THEME_NAME) if not dry else None
     if root:
         st.put_tree(root, paths.data_home() / "icons" / icons.THEME_NAME)

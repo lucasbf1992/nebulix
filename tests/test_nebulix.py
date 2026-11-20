@@ -117,6 +117,14 @@ class TestApply(Sandbox):
         self.assertEqual(self.snapshot(), before)
         self.assertEqual({k: v for k, v in self.gs().items()}, {k: "'default'" for k in self.gs()})
 
+    def test_missing_requirements_reported_but_rest_applied(self):
+        from nebulix.apply import apply
+        lines = []
+        st = apply(self.cfg(), log=lines.append)
+        self.assertTrue(any("User Themes" in m for m, _ in st.missing))
+        self.assertTrue(any("Requisitos faltando" in ln for ln in lines))
+        self.assertEqual(self.gs()["org.gnome.desktop.interface|gtk-theme"], "'Nebulix-Dark'")
+
     def test_reset_uses_system_defaults(self):
         from nebulix.apply import apply
         from nebulix.restore import restore

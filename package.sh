@@ -55,6 +55,16 @@ cat >"$D/DEBIAN/postinst" <<'X'
 #!/bin/sh
 set -e
 if [ "$1" = configure ] && command -v py3compile >/dev/null 2>&1; then py3compile -p nebulix || true; fi
+if [ "$1" = configure ]; then
+  cat >&2 <<'MSG'
+
+Nebulix instalado. Nada foi alterado na sua sessão ainda:
+  nebulix apply --dry-run   mostra o que mudaria
+  nebulix apply             aplica o tema ao seu usuário
+  nebulix doctor            mostra requisitos e como instalar
+  nebulix reset             volta ao padrão do Ubuntu (rode ANTES de remover o pacote)
+MSG
+fi
 exit 0
 X
 cat >"$D/DEBIAN/prerm" <<'X'
@@ -81,8 +91,8 @@ Maintainer: Lucas <lucasbf1992@users.noreply.github.com>
 Section: gnome
 Priority: optional
 Installed-Size: $SIZE
-Depends: python3 (>= 3.11), python3-gi, gir1.2-gtk-4.0, gir1.2-adw-1, gnome-shell (>= 50~)
-Recommends: gnome-shell-extensions, papirus-icon-theme, librsvg2-common
+Depends: python3 (>= 3.11), python3-gi, gir1.2-gtk-4.0, gir1.2-adw-1, gnome-shell (>= 50~), gnome-shell-extensions
+Recommends: papirus-icon-theme, librsvg2-common
 Suggests: starship, fastfetch, fonts-inter
 Homepage: https://github.com/lucasbf1992/nebulix
 Description: Nebulix - customizable dark purple theme for GNOME

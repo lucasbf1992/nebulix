@@ -20,6 +20,7 @@ class State:
         self.dir = paths.state_dir()
         self.bk = self.dir / "backup" / "files"
         self.dry, self.log = dry, log
+        self.missing = []  # (message, fix command) for requirements not met
         self.manifest = self._read("manifest")
         self.backed = self._read("backed-up")
         self.before = {}

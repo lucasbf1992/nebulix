@@ -90,6 +90,11 @@ class SettingsWindow(Adw.PreferencesWindow):
     # ---------- pages ----------
     def _page_look(self):
         page = Adw.PreferencesPage(title="Aparência", icon_name="applications-graphics-symbolic")
+        warns = [m for lvl, m, _f in doctor.check() if lvl == "warn"]
+        if warns:
+            gb = Adw.PreferencesGroup()
+            gb.add(Adw.Banner(title=f"Requisitos faltando: {'; '.join(warns)}. Veja a aba Diagnóstico.", revealed=True))
+            page.add(gb)
         g = Adw.PreferencesGroup(title="Cores")
         row = Adw.ActionRow(title="Destaque", subtitle="Cor principal de seleção, botões e foco")
         box = Gtk.Box(spacing=8, valign=Gtk.Align.CENTER)
