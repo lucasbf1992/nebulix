@@ -73,9 +73,22 @@ def _restore(mode="undo", log=print, remove_icons=False, dry=False):
                 shutil.rmtree(p, ignore_errors=True) if p.is_dir() and not p.is_symlink() else p.unlink(missing_ok=True)
                 shutil.copytree(src, p, symlinks=True) if src.is_dir() else shutil.copy2(src, p, follow_symlinks=False)
     _strip_block(paths.conf_home() / "gtk-4.0/gtk.css", dry, drop_if_empty=True)
-    if remove_icons and not dry:
-        for n in ("WhiteSur-purple", "WhiteSur-purple-dark", "WhiteSur-purple-light", "WhiteSur", "WhiteSur-dark", "WhiteSur-light"):
-            shutil.rmtree(paths.data_home() / "icons" / n, ignore_errors=True)
+    if remove_icons:
+        for n in icons.owned_folders():
+            p = paths.data_home() / "icons" / n
+            if p.is_symlink() or p.exists():
+                log(f"remove {p}")
+                if not dry:
+                    shutil.rmtree(p) if p.is_dir() and not p.is_symlink() else p.unlink()
+        cache = icons.cache_dir()
+        if cache.exists():
+            log(f"remove {cache}")
+            if not dry:
+                shutil.rmtree(cache, ignore_errors=True)
+                try:
+                    cache.parent.rmdir()
+                except OSError:
+                    pass
     if not dry:
         for d in (paths.data_home() / "backgrounds/nebulix", paths.data_home() / "org.gnome.Ptyxis/palettes"):
             try:

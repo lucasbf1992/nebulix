@@ -45,7 +45,36 @@ nebulix config set accent=magenta variant=darker radius=10      # accent do tema
 nebulix config set window_buttons=mac topbar=solid dock_position=left
 nebulix config set wallpaper=gen-orbit        # versões geradas seguem a cor de destaque
 ```
-Chaves: `theme` (nebulix, macos-dark, macos-light, nebulix-light), `accent` (`auto`, um nome do tema ou `#RRGGBB`; Nebulix: nebulix, magenta, cyan, blue, green, amber; macOS: blue, purple, pink, red, orange, yellow, green, graphite), `variant` (dark, darker; só nos temas escuros), `radius` (6 a 20), `window_buttons` (gnome, mac), `topbar` (floating, solid, translucent), `font` (auto, keep), `vscode_theme` (keep, follow ou o id de um tema), `dock` (macos, ubuntu), `dock_position` (bottom, left, right), `dock_icon_size`, `dock_opacity`, `dock_zoom` (off, on), `dock_zoom_factor` (120 a 200, em %), `terminal_opacity` (70 a 100, em %), `terminal_cursor` (block, ibeam, underline), `terminal_font` (auto, keep), `terminal_font_size` (8 a 20), `terminal_padding` (on, off), `terminal_line_height` (100 a 140, em %), `terminal_columns` (80 a 240), `terminal_rows` (24 a 80), `icons` (whitesur, papirus, keep), `wallpaper`, `components`. O arquivo fica em `~/.config/nebulix/config.toml`.
+Chaves: `theme` (nebulix, macos-dark, macos-light, nebulix-light), `accent` (`auto`, um nome do tema ou `#RRGGBB`; Nebulix: nebulix, magenta, cyan, blue, green, amber; macOS: blue, purple, pink, red, orange, yellow, green, graphite), `variant` (dark, darker; só nos temas escuros), `radius` (6 a 20), `window_buttons` (gnome, mac), `topbar` (floating, solid, translucent), `font` (auto, keep), `vscode_theme` (keep, follow ou o id de um tema), `dock` (macos, ubuntu), `dock_position` (bottom, left, right), `dock_icon_size`, `dock_opacity`, `dock_zoom` (off, on), `dock_zoom_factor` (120 a 200, em %), `terminal_opacity` (70 a 100, em %), `terminal_cursor` (block, ibeam, underline), `terminal_font` (auto, keep), `terminal_font_size` (8 a 20), `terminal_padding` (on, off), `terminal_line_height` (100 a 140, em %), `terminal_columns` (80 a 240), `terminal_rows` (24 a 80), `icons` (whitesur, mactahoe, mcmojave, papirus, keep), `icon_folders` (auto, nebulix, conjunto), `wallpaper`, `components`. O arquivo fica em `~/.config/nebulix/config.toml`.
+
+## Conjuntos de ícones
+
+O Nebulix usa conjuntos de ícones de terceiros, baixados sob demanda (tarball fixado por versão, com verificação sha256) e instalados em `~/.local/share/icons`:
+
+| Valor de `icons` | Conjunto | Tamanho |
+|---|---|---|
+| `whitesur` | WhiteSur (padrão dos temas macOS) | ~7 MB |
+| `mactahoe` | MacTahoe | ~10 MB |
+| `mcmojave` | McMojave-circle | ~6 MB |
+| `papirus` | Papirus, sem baixar nada (`sudo apt install papirus-icon-theme`) | |
+| `keep` | não mexe no tema de ícones | |
+
+```bash
+nebulix icons install                  # baixa o conjunto configurado, na cor do destaque
+nebulix icons install mactahoe         # ou um conjunto específico
+nebulix config set icons=mactahoe      # troca o conjunto e aplica
+```
+**A cor segue o destaque.** Cada conjunto tem a sua lista de cores; o Nebulix escolhe a mais próxima do destaque do tema (cinza para destaques sem cor) e instala só essa, nas variantes escura e clara. Trocar o destaque para uma cor que o conjunto ainda não tem usa a cor instalada mais parecida e o `nebulix doctor` avisa qual comando baixa a certa.
+
+**Pastas.** `icon_folders` (`auto`, `nebulix`, `conjunto`) decide quem desenha as pastas. `nebulix` põe as pastas squircle do Nebulix por cima do conjunto (camada `Nebulix-Icons`, que herda o resto dele); `conjunto` usa as pastas do próprio conjunto; `auto` (padrão) segue o tema: squircle nos temas Nebulix, as pastas do conjunto nos temas macOS.
+
+**Cache.** O tarball verificado fica em `~/.cache/nebulix/icons`, então trocar de cor ou de conjunto depois não precisa de rede.
+
+**Desfazer e remover.** `nebulix undo` devolve o tema de ícones que você tinha antes e `nebulix reset` volta ao padrão; os dois deixam os conjuntos baixados no disco. Para apagá-los:
+```bash
+nebulix reset --remove-icons           # remove WhiteSur, MacTahoe, McMojave-circle, Nebulix-Icons e o cache
+```
+Só as pastas que o Nebulix gera são apagadas (todas as cores e variantes dos três conjuntos, mais os nomes de uma instalação antiga do WhiteSur); Papirus, Yaru e qualquer outro tema seu ficam como estão.
 
 ## Terminal
 Cada tema traz o seu visual para o terminal, aplicado ao **Ptyxis** (perfil próprio "Nebulix", que vira o padrão) e ao **GNOME Terminal** (perfil "Nebulix", reescrito a cada aplicação):
@@ -68,6 +97,7 @@ O texto continua com contraste de pelo menos 4.5:1 mesmo na opacidade mínima (7
 |---|---|
 | `nebulix undo` | volta ao que estava antes do Nebulix (usa o backup em `~/.local/share/nebulix`) |
 | `nebulix reset` | padrão de fábrica do Ubuntu (`gsettings reset` nas chaves tocadas, arquivos removidos/restaurados) |
+| `nebulix reset --remove-icons` | o mesmo, e apaga também os conjuntos de ícones baixados e o cache |
 
 Os dois também estão na aba **Restaurar** do app. Depois, `sudo apt remove nebulix` remove o pacote.
 

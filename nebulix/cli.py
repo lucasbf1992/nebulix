@@ -15,7 +15,7 @@ HELP = """nebulix {v} — temas para GNOME (Nebulix, macOS Dark, macOS Light, Ne
   nebulix config list|get K|set K=V ...   ver/alterar (aplica ao salvar, use --no-apply p/ não aplicar)
   nebulix status               mostra config e o que está instalado
   nebulix undo [--dry-run]     volta ao que era antes do Nebulix        (alias: uninstall)
-  nebulix reset [--dry-run]    padrão de fábrica do Ubuntu (gsettings reset)
+  nebulix reset [--remove-icons] [--dry-run]   padrão de fábrica do Ubuntu (gsettings reset); --remove-icons apaga os conjuntos de ícones e o cache
   nebulix icons install [CONJUNTO] [--yes]   baixa e ativa um conjunto de ícones (whitesur | mactahoe | mcmojave; padrão: o configurado)
   nebulix doctor               checa dependências e mostra como instalar
   nebulix wallpaper NOME       orbit | horizon | circuit | code | none

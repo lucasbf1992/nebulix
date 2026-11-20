@@ -132,6 +132,21 @@ def uses_overlay(theme, folders="auto"):
     return themes.get(theme)["icons"]["overlay"]
 
 
+def owned_folders():
+    """Every folder name the sets can leave in ~/.local/share/icons (the 0.4.0 WhiteSur ones included), plus the overlay.
+    The names come from `SETS`; a folder of anyone else (Papirus, a third-party theme) is never on the list."""
+    names = {THEME_NAME}
+    for entry in SETS.values():
+        pre = entry["prefix"]
+        names.add(pre)
+        for color in entry["colors"]:
+            names.add(pre if color == "default" else f"{pre}-{color}")
+        for base in list(names):
+            if base == pre or base.startswith(pre + "-"):
+                names.update((f"{base}-dark", f"{base}-light"))
+    return sorted(names)
+
+
 def fallback_name(theme):
     return "Papirus-Dark" if themes.get(theme)["scheme"] == "dark" else "Papirus-Light"
 
