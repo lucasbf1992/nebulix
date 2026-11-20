@@ -130,7 +130,7 @@ class Sandbox(unittest.TestCase):
         for f in (self.tmp / "bin").iterdir():
             f.chmod(f.stat().st_mode | stat.S_IEXEC)
         self.old = dict(os.environ)
-        for k in ("XDG_CONFIG_HOME", "XDG_DATA_HOME"):
+        for k in ("XDG_CONFIG_HOME", "XDG_DATA_HOME", "XDG_CACHE_HOME"):
             os.environ.pop(k, None)
         os.environ.update(HOME=str(self.tmp / "home"), FAKE_STATE=str(self.tmp / "state"),
                           PATH=f"{self.tmp/'bin'}:{self.old['PATH']}")

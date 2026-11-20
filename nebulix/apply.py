@@ -400,7 +400,7 @@ def _font(st, cfg):
 
 def _icons(st, cfg, t, stage, dry, install, log):
     mode, theme = cfg["icons"], cfg["theme"]
-    base, fb = icons.base_name(theme), icons.fallback_name(theme)
+    fb = icons.fallback_name(theme)
     if mode == "keep":
         st.gs_release(IFACE, "icon-theme")
         return
@@ -410,21 +410,24 @@ def _icons(st, cfg, t, stage, dry, install, log):
         else:
             st.missing.append((f"{fb} ausente", "sudo apt install papirus-icon-theme"))
         return
+    entry = icons.SETS[mode]
+    base = icons.base_name(theme, mode)
     if not icons.has_theme(base):
         if install and not dry:
             try:
-                icons.ensure_whitesur(log, theme)
+                icons.ensure_set(mode, log, theme)
             except Exception as e:  # network or checksum failure: fall back to Papirus
-                log(f"! WhiteSur indisponível ({e}); usando Papirus")
+                log(f"! {entry['label']} indisponível ({e}); usando Papirus")
         else:
-            st.missing.append(("ícones estilo macOS (WhiteSur) não instalados; usando Papirus por enquanto", "nebulix icons install   (baixa ~7 MB, GPL-3.0)"))
+            st.missing.append((f"ícones {entry['label']} não instalados; usando Papirus por enquanto",
+                               f"nebulix icons install {mode}   (baixa ~{entry['size_mb']} MB, {entry['license']})"))
     if not icons.uses_overlay(theme):  # macOS themes: plain WhiteSur
         if icons.has_theme(base):
             st.gs_set(IFACE, "icon-theme", q(base))
         elif icons.has_theme(fb):
             st.gs_set(IFACE, "icon-theme", q(fb))
         return
-    root = icons.write_overlay(t, stage / "icons" / icons.THEME_NAME, theme) if not dry else None
+    root = icons.write_overlay(t, stage / "icons" / icons.THEME_NAME, theme, mode) if not dry else None
     if root:
         st.put_tree(root, paths.data_home() / "icons" / icons.THEME_NAME)
     st.gs_set(IFACE, "icon-theme", q(icons.THEME_NAME))

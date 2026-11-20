@@ -44,8 +44,10 @@ def check():
         theme = config.load()["theme"]
     except Exception:  # broken config.toml: keep the checks that do not depend on it
         theme = "nebulix"
-    out.append(("ok", "ícones WhiteSur instalados", "") if icons.has_theme(icons.base_name(theme))
-               else ("warn", "ícones estilo macOS (WhiteSur) não instalados", "nebulix icons install"))
+    for sid, entry in icons.SETS.items():
+        out.append(("ok", f"ícones {entry['label']} instalados", "") if icons.installed(sid)
+                   else ("warn" if sid == "whitesur" else "info", f"ícones {entry['label']} não instalados (~{entry['size_mb']} MB)",
+                         f"nebulix icons install {sid}"))
     if not icons.has_theme(icons.fallback_name(theme)):
         out.append(("info", f"{icons.fallback_name(theme)} ausente (fallback de ícones)", "sudo apt install papirus-icon-theme"))
     fonts = _run("fc-list") if shutil.which("fc-list") else ""

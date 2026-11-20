@@ -27,6 +27,10 @@ def data_home() -> Path:
     return Path(os.environ.get("XDG_DATA_HOME") or home() / ".local/share")
 
 
+def cache_home() -> Path:
+    return Path(os.environ.get("XDG_CACHE_HOME") or home() / ".cache")
+
+
 def state_dir() -> Path:
     return data_home() / "nebulix"
 

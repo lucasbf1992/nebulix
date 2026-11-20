@@ -14,7 +14,7 @@ CHOICES = {
     "dock": ("macos", "ubuntu"),
     "dock_position": ("bottom", "left", "right"),
     "dock_zoom": ("off", "on"),
-    "icons": ("whitesur", "papirus", "keep"),
+    "icons": ("whitesur", "mactahoe", "mcmojave", "papirus", "keep"),
     "font": ("auto", "keep"),
     "vscode_theme": ("keep", "follow", "nebulix", "macos-dark", "macos-light", "nebulix-light"),
     "wallpaper": ("orbit", "horizon", "circuit", "code", "gen-orbit", "gen-horizon", "gen-circuit", "gen-code", "none"),
@@ -64,7 +64,10 @@ def validate(raw: dict) -> dict:
     names = themes.accent_names(cfg["theme"])
     if a != "auto" and a not in names and not (isinstance(a, str) and re.fullmatch(r"#[0-9A-Fa-f]{6}", a)):
         errs.append(f"accent inválido: {a!r} (use auto, {', '.join(names)} ou #RRGGBB)")
+    from . import icons  # local: icons imports palette, which imports config
     for k, ch in CHOICES.items():
+        if k == "icons":
+            ch = tuple(dict.fromkeys(ch + tuple(icons.SETS)))
         if cfg[k] not in ch:
             errs.append(f"{k} inválido: {cfg[k]!r} (use {', '.join(ch)})")
     for k, lo, hi in INT_RANGES:

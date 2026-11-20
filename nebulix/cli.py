@@ -16,7 +16,7 @@ HELP = """nebulix {v} — temas para GNOME (Nebulix, macOS Dark, macOS Light, Ne
   nebulix status               mostra config e o que está instalado
   nebulix undo [--dry-run]     volta ao que era antes do Nebulix        (alias: uninstall)
   nebulix reset [--dry-run]    padrão de fábrica do Ubuntu (gsettings reset)
-  nebulix icons install        baixa o WhiteSur (~7 MB) e ativa os ícones estilo macOS
+  nebulix icons install [CONJUNTO] [--yes]   baixa e ativa um conjunto de ícones (whitesur | mactahoe | mcmojave; padrão: o configurado)
   nebulix doctor               checa dependências e mostra como instalar
   nebulix wallpaper NOME       orbit | horizon | circuit | code | none
 
@@ -55,17 +55,46 @@ def main(argv=None):
         for lvl, msg, fix in doctor.check():
             print({"ok": "✓", "warn": "!", "info": "·"}[lvl], msg + (f"\n    → {fix}" if fix else ""))
     elif cmd == "icons" and rest[:1] == ["install"]:
-        from . import icons
-        c = config.load()
-        icons.ensure_whitesur(print, c["theme"])
-        c["icons"] = "whitesur"
-        config.save(c)
-        apply(c, only=["icons"])
+        return _icons_install(rest[1:])
     elif cmd == "gui":
         return gui()
     else:
         print(HELP.format(v=__version__))
         return 2
+    return 0
+
+
+def _icons_install(rest):
+    from . import icons
+    yes = "--yes" in rest or "-y" in rest
+    names = [r for r in rest if not r.startswith("-")]
+    c = config.load()
+    sid = names[0] if names else c["icons"]
+    if names and sid not in icons.SETS and sid not in config.CHOICES["icons"]:
+        print(f"conjunto desconhecido: {sid} (use {', '.join(icons.SETS)})", file=sys.stderr)
+        return 2
+    if sid not in icons.SETS:
+        print(f"icons = {sid}: não há nada para baixar (o conjunto vem do sistema)")
+        return 0
+    entry = icons.SETS[sid]
+    base = icons.base_name(c["theme"], sid)
+    if not icons.has_theme(base) and not icons.cached_tarball(sid) and not yes:
+        print(f"Baixar ~{entry['size_mb']} MB ({entry['label']} {entry['tag']}, {entry['license']})? [s/N] ", end="", flush=True)
+        try:
+            ans = input()
+        except EOFError:
+            ans = ""
+        if ans.strip().lower() not in ("s", "sim", "y", "yes"):
+            print("cancelado: nada foi baixado")
+            return 0
+    try:
+        icons.ensure_set(sid, print, c["theme"])
+    except Exception as e:
+        print(f"erro: {entry['label']} indisponível ({e})", file=sys.stderr)
+        return 1
+    c["icons"] = sid
+    config.save(c)
+    apply(c, only=["icons"])
     return 0
 
 

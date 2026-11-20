@@ -20,7 +20,7 @@ LABELS = {
     "topbar": {"floating": "Flutuante (pílulas)", "solid": "Sólida", "translucent": "Translúcida (largura total)"},
     "dock": {"macos": "Estilo macOS (flutuante, centralizada)", "ubuntu": "Não alterar (padrão do Ubuntu)"},
     "dock_position": {"bottom": "Embaixo", "left": "Esquerda", "right": "Direita"},
-    "icons": {"whitesur": "Estilo macOS (WhiteSur, variante do tema)", "papirus": "Papirus (claro ou escuro, conforme o tema)", "keep": "Não alterar"},
+    "icons": {"whitesur": "Estilo macOS (WhiteSur, variante do tema)", "mactahoe": "MacTahoe (estilo macOS recente)", "mcmojave": "McMojave-circle (ícones redondos)", "papirus": "Papirus (claro ou escuro, conforme o tema)", "keep": "Não alterar"},
     "vscode_theme": {"keep": "Não alterar", "follow": "Seguir o tema do Nebulix", **{t: gen.vscode_label(t) for t in config.CHOICES["theme"]}},
     "font": {"auto": "Do tema (Inter nos temas macOS, se instalada)", "keep": "Não alterar"},
     "terminal_cursor": {"block": "Bloco", "ibeam": "Barra", "underline": "Sublinhado"},
@@ -307,8 +307,10 @@ class SettingsWindow(Adw.PreferencesWindow):
         page = Adw.PreferencesPage(title="Ícones e fundo", icon_name="image-x-generic-symbolic")
         g = Adw.PreferencesGroup(title="Ícones")
         self.combo(g, "Conjunto", "icons", "O estilo macOS usa o WhiteSur (GPL-3.0), baixado de uma versão fixa do GitHub")
-        base = icons.base_name(self.cfg["theme"])
-        row = Adw.ActionRow(title="WhiteSur", subtitle="Instalado" if icons.has_theme(base) else "Não instalado (~7 MB, verifica sha256)")
+        sid = self.cfg["icons"] if self.cfg["icons"] in icons.SETS else "whitesur"
+        entry = icons.SETS[sid]
+        base = icons.base_name(self.cfg["theme"], sid)
+        row = Adw.ActionRow(title=entry["label"], subtitle="Instalado" if icons.has_theme(base) else f"Não instalado (~{entry['size_mb']} MB, verifica sha256)")
         btn = Gtk.Button(label="Instalar", valign=Gtk.Align.CENTER, sensitive=not icons.has_theme(base))
 
         def install(_b):
@@ -317,7 +319,7 @@ class SettingsWindow(Adw.PreferencesWindow):
 
             def work():
                 try:
-                    icons.ensure_whitesur(lambda *_: None, self.cfg["theme"])
+                    icons.ensure_set(sid, lambda *_: None, self.cfg["theme"])
                     apply(dict(self.cfg), only=["icons"], log=lambda *_: None)
                     GLib.idle_add(lambda: row.set_subtitle("Instalado") or False)
                 except Exception as e:
