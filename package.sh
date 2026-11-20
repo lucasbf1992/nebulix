@@ -4,7 +4,7 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 V="$(python3 -c 'from nebulix import __version__ as v; print(v)')"
-REV="${DEB_REV:-2}"   # Debian revision: bump it so apt upgrades a rebuilt package of the same version
+REV="${DEB_REV:-3}"   # Debian revision: bump it so apt upgrades a rebuilt package of the same version
 DV="$V-$REV"
 python3 -m unittest discover -s tests >/dev/null
 python3 build.py >/dev/null

@@ -8,7 +8,7 @@ gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
 from gi.repository import Adw, Gdk, GLib, Gtk  # noqa: E402
 
-from . import __version__, config, doctor, icons  # noqa: E402
+from . import __version__, config, doctor, icons, paths  # noqa: E402
 from .apply import apply  # noqa: E402
 from .restore import restore  # noqa: E402
 
@@ -38,6 +38,12 @@ class SettingsWindow(Adw.PreferencesWindow):
         css = "".join(f".nbx-{n} {{ background: {h}; border-radius: 99px; min-width: 26px; min-height: 26px; padding: 0; }}"
                       f".nbx-{n}:checked {{ box-shadow: 0 0 0 3px alpha(currentColor, .8); }}" for n, h in config.ACCENTS.items())
         self._css.load_from_string(css)
+        self.status_row = Adw.ActionRow()
+        self.apply_btn = Gtk.Button(label="Aplicar agora", valign=Gtk.Align.CENTER)
+        self.apply_btn.add_css_class("suggested-action")
+        self.apply_btn.connect("clicked", lambda _b: self._apply_now())
+        self.status_row.add_suffix(self.apply_btn)
+        self._refresh_status()
         self.add(self._page_look())
         self.add(self._page_icons())
         self.add(self._page_dev())
@@ -45,6 +51,25 @@ class SettingsWindow(Adw.PreferencesWindow):
         self.add(self._page_doctor())
 
     # ---------- plumbing ----------
+    @staticmethod
+    def installed():
+        m = paths.state_dir() / "manifest"
+        return m.exists() and bool(m.read_text().strip())
+
+    def _refresh_status(self):
+        on = self.installed()
+        self.status_row.set_title("Tema aplicado" if on else "Tema não aplicado")
+        self.status_row.set_subtitle("As opções abaixo são aplicadas ao mudar. Use o botão para reaplicar tudo." if on
+                                     else "As configurações estão no padrão (ou foram restauradas). Escolha as opções e aplique.")
+        self.apply_btn.set_label("Reaplicar" if on else "Aplicar agora")
+        return False
+
+    def toast(self, msg, persistent=False):
+        t = Adw.Toast(title=msg)
+        t.set_timeout(0 if persistent else 3)
+        self.add_toast(t)
+        return False
+
     def set(self, key, value):
         self.cfg[key] = value
         try:
@@ -62,12 +87,13 @@ class SettingsWindow(Adw.PreferencesWindow):
         cfg = dict(self.cfg)
 
         def work():
+            err = None
             try:
                 apply(cfg, only=only, log=lambda *_: None)
-                msg = "Aplicado"
             except Exception as e:  # surface any failure to the user
-                msg = f"Erro: {e}"
-            GLib.idle_add(lambda: self.add_toast(Adw.Toast(title=msg)) and False)
+                err = f"Erro ao aplicar: {e}"
+            GLib.idle_add(self.toast, err or "Aplicado", bool(err))
+            GLib.idle_add(self._refresh_status)
         threading.Thread(target=work, daemon=True).start()
         return False
 
@@ -90,6 +116,9 @@ class SettingsWindow(Adw.PreferencesWindow):
     # ---------- pages ----------
     def _page_look(self):
         page = Adw.PreferencesPage(title="Aparência", icon_name="applications-graphics-symbolic")
+        gs_ = Adw.PreferencesGroup()
+        gs_.add(self.status_row)
+        page.add(gs_)
         warns = [m for lvl, m, _f in doctor.check() if lvl == "warn"]
         if warns:
             gb = Adw.PreferencesGroup()
@@ -191,10 +220,11 @@ class SettingsWindow(Adw.PreferencesWindow):
             def work():
                 try:
                     restore(mode, log=lambda *_: None)
-                    msg = "Restaurado. Saia e entre na sessão se o Shell ainda mostrar o tema."
+                    msg, bad = "Restaurado. Use \"Aplicar agora\" na aba Aparência para aplicar de novo.", False
                 except Exception as e:
-                    msg = f"Erro: {e}"
-                GLib.idle_add(lambda: self.add_toast(Adw.Toast(title=msg)) and False)
+                    msg, bad = f"Erro ao restaurar: {e}", True
+                GLib.idle_add(self.toast, msg, bad)
+                GLib.idle_add(self._refresh_status)
             threading.Thread(target=work, daemon=True).start()
         r1 = Adw.ActionRow(title="Desfazer minhas mudanças", subtitle="Volta ao que estava antes de instalar o Nebulix (usa o backup)")
         b1 = Gtk.Button(label="Desfazer", valign=Gtk.Align.CENTER)
