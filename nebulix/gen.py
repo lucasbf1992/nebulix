@@ -32,10 +32,10 @@ background-color='{T['bg-0']}'
 bold-color-same-as-fg=true
 cursor-colors-set=true
 cursor-background-color='{T['magenta']}'
-cursor-foreground-color='{T['bg-0']}'
+cursor-foreground-color='{T['on-magenta']}'
 highlight-colors-set=true
-highlight-background-color='{T['purple']}'
-highlight-foreground-color='{T['bg-0']}'
+highlight-background-color='{T['accent-solid']}'
+highlight-foreground-color='{T['on-solid']}'
 palette=[{pal}]
 font='JetBrainsMono Nerd Font 11'
 use-system-font=false
@@ -60,8 +60,8 @@ def vscode(P, T, dist):
         "sideBarTitle.foreground": b["fg-1"], "sideBarSectionHeader.background": b["bg-0"],
         "activityBar.background": b["bg-0"], "activityBar.foreground": b["purple"],
         "activityBar.inactiveForeground": b["fg-2"], "activityBar.activeBorder": b["purple"],
-        "activityBarBadge.background": b["magenta"], "activityBarBadge.foreground": b["bg-0"],
-        "statusBar.background": b["purple"], "statusBar.foreground": b["bg-0"],
+        "activityBarBadge.background": b["magenta"], "activityBarBadge.foreground": b["on-magenta"],
+        "statusBar.background": b["accent-solid"], "statusBar.foreground": b["on-solid"],
         "statusBar.noFolderBackground": b["purple-dim"], "statusBar.debuggingBackground": b["magenta"],
         "titleBar.activeBackground": b["bg-0"], "titleBar.activeForeground": b["fg-1"],
         "titleBar.inactiveBackground": b["bg-0"], "titleBar.border": b["bg-2"],
@@ -74,16 +74,16 @@ def vscode(P, T, dist):
         "list.highlightForeground": b["magenta"],
         "input.background": b["bg-2"], "input.border": b["border"], "input.foreground": b["fg-0"],
         "input.placeholderForeground": b["fg-2"], "focusBorder": b["purple"],
-        "button.background": b["purple"], "button.foreground": b["bg-0"], "button.hoverBackground": b["purple-dim"],
+        "button.background": b["accent-solid"], "button.foreground": b["on-solid"], "button.hoverBackground": b["accent-solid-hover"],
         "dropdown.background": b["bg-2"], "dropdown.border": b["border"],
-        "badge.background": b["magenta"], "badge.foreground": b["bg-0"],
+        "badge.background": b["magenta"], "badge.foreground": b["on-magenta"],
         "scrollbarSlider.background": b["border"] + "88", "scrollbarSlider.hoverBackground": b["purple"] + "88",
         "editorWidget.background": b["bg-2"], "editorSuggestWidget.background": b["bg-2"],
         "editorSuggestWidget.selectedBackground": b["bg-3"], "peekViewEditor.background": b["bg-1"],
         "gitDecoration.modifiedResourceForeground": b["yellow"], "gitDecoration.untrackedResourceForeground": b["green"],
         "gitDecoration.deletedResourceForeground": b["red"], "editorError.foreground": b["red"],
         "editorWarning.foreground": b["yellow"], "editorInfo.foreground": b["cyan"],
-        "textLink.foreground": b["cyan"], "menu.background": b["bg-2"], "menu.selectionBackground": b["bg-3"],
+        "textLink.foreground": b["link"], "menu.background": b["bg-2"], "menu.selectionBackground": b["bg-3"],
     }
     for i, n in enumerate(["Black", "Red", "Green", "Yellow", "Blue", "Magenta", "Cyan", "White"]):
         ui[f"terminal.ansi{n}"] = P["ansi"]["normal"][i]
@@ -113,15 +113,18 @@ def vscode(P, T, dist):
         tk(["markup.underline.link", "string.other.link"], b["cyan"]),
         tk(["support.type.property-name.json"], b["purple"]),
     ]
-    theme = {"name": "Nebulix Dark", "type": "dark", "colors": ui, "tokenColors": tokens,
+    light = P["scheme"] == "light"
+    base = P["label"].split(" (")[0]
+    tname = "Nebulix Dark" if base == "Nebulix" else (base if base.startswith("Nebulix") else f"Nebulix {base}")
+    theme = {"name": tname, "type": P["scheme"], "colors": ui, "tokenColors": tokens,
              "semanticHighlighting": True}
     d = dist / "vscode/nebulix-theme"
     _w(d / "themes/nebulix-color-theme.json", json.dumps(theme, indent=2, ensure_ascii=False) + "\n")
     pkg = {
-        "name": "nebulix-theme", "displayName": "Nebulix", "description": "Dark purple theme for developers.",
+        "name": "nebulix-theme", "displayName": "Nebulix", "description": "Themes for developers: Nebulix, macOS Dark and Light.",
         "version": P["version"], "publisher": "nebulix", "license": "MIT",
         "engines": {"vscode": "^1.80.0"}, "categories": ["Themes"],
-        "contributes": {"themes": [{"label": "Nebulix Dark", "uiTheme": "vs-dark",
+        "contributes": {"themes": [{"label": tname, "uiTheme": "vs" if light else "vs-dark",
                                     "path": "./themes/nebulix-color-theme.json"}]},
     }
     _w(d / "package.json", json.dumps(pkg, indent=2) + "\n")
@@ -137,18 +140,18 @@ def nvim(P, T, dist):
         "Constant": (b["yellow"], None), "Keyword": (b["purple"], None), "Statement": (b["purple"], None),
         "Function": (b["cyan"], None), "Type": (b["blue"], None), "Identifier": (b["fg-0"], None),
         "Operator": (b["magenta"], None), "PreProc": (b["magenta"], None), "Special": (b["cyan"], None),
-        "Pmenu": (b["fg-0"], b["bg-2"]), "PmenuSel": (b["fg-0"], b["bg-3"]), "Search": (b["bg-0"], b["magenta"]),
-        "StatusLine": (b["bg-0"], b["purple"]), "StatusLineNC": (b["fg-2"], b["bg-2"]),
+        "Pmenu": (b["fg-0"], b["bg-2"]), "PmenuSel": (b["fg-0"], b["bg-3"]), "Search": (b["on-magenta"], b["magenta"]),
+        "StatusLine": (b["on-solid"], b["accent-solid"]), "StatusLineNC": (b["fg-2"], b["bg-2"]),
         "VertSplit": (b["border"], None), "WinSeparator": (b["border"], None),
-        "ErrorMsg": (b["red"], None), "WarningMsg": (b["yellow"], None), "Todo": (b["bg-0"], b["yellow"]),
+        "ErrorMsg": (b["red"], None), "WarningMsg": (b["yellow"], None), "Todo": (b["on-yellow"], b["yellow"]),
         "DiffAdd": (None, b["bg-2"]), "DiffDelete": (b["red"], None), "DiffChange": (None, b["bg-3"]),
-        "MatchParen": (b["magenta"], b["bg-3"]), "Cursor": (b["bg-0"], b["magenta"]),
+        "MatchParen": (b["magenta"], b["bg-3"]), "Cursor": (b["on-magenta"], b["magenta"]),
         "DiagnosticError": (b["red"], None), "DiagnosticWarn": (b["yellow"], None),
         "DiagnosticInfo": (b["cyan"], None), "DiagnosticHint": (b["blue"], None),
     }
     out = ["-- SPDX-License-Identifier: MIT", "-- Nebulix colorscheme (generated by build.py)",
            "vim.cmd('highlight clear')", "if vim.fn.exists('syntax_on') == 1 then vim.cmd('syntax reset') end",
-           "vim.o.termguicolors = true", "vim.o.background = 'dark'", "vim.g.colors_name = 'nebulix'", "local hl = vim.api.nvim_set_hl"]
+           "vim.o.termguicolors = true", "vim.o.background = '" + P["scheme"] + "'", "vim.g.colors_name = 'nebulix'", "local hl = vim.api.nvim_set_hl"]
     for name, v in hl.items():
         fg, bgc = v[0], v[1]
         parts = []

@@ -1,6 +1,6 @@
 # nebulix
 
-Tema escuro com neon roxo para GNOME/Ubuntu, *nebulosa + \*nix*. Personalizável ao vivo, com dock e ícones estilo macOS, e fácil de desfazer.
+Temas para GNOME/Ubuntu, *nebulosa + \*nix*: **Nebulix** (roxo escuro), **macOS Dark**, **macOS Light** e **Nebulix Light**. Personalizável ao vivo, com dock e ícones estilo macOS, e fácil de desfazer.
 Testado no Ubuntu 26.04 LTS (GNOME 50, Wayland). Alvo: 26.10 (GNOME 51).
 
 ![desktop](images/design/desktop.png)
@@ -21,16 +21,31 @@ nebulix                                      # abre o app de personalização
 ```
 Recomendado: `sudo apt install gnome-shell-extensions papirus-icon-theme` (tema do Shell e fallback de ícones) e `nebulix icons install` (baixa o WhiteSur, ~7 MB, com verificação sha256). `nebulix doctor` diz o que falta e como instalar.
 
+## Temas
+
+| Tema | Visual | Pacote aplicado ao escolher |
+|---|---|---|
+| `nebulix` | roxo escuro neon (padrão) | destaque roxo, botões GNOME, barra flutuante, cantos 14 px, ícones WhiteSur roxos + pastas Nebulix, dock macOS |
+| `macos-dark` | cinzas neutros `#161616`…`#3A3A3C`, azul `#0A84FF` | semáforo à esquerda, barra translúcida, cantos 10 px, ícones WhiteSur azuis, Inter |
+| `macos-light` | cinzas claros `#F5F5F7`/`#FFFFFF`, azul `#007AFF` | igual ao macOS Dark, com ícones WhiteSur para fundo claro |
+| `nebulix-light` | brancos lilás, roxo `#6B3DD9` | como o Nebulix, em claro |
+
+```bash
+nebulix theme                 # lista os temas
+nebulix theme macos-dark      # aplica o tema e o pacote (alias: macos, claro = macos-light)
+```
+Escolher um tema define destaque (`accent = "auto"`, o padrão do tema), botões da janela, barra, cantos, ícones, dock e fonte; depois cada item continua ajustável. Os temas claros usam `color-scheme = prefer-light`, o stylesheet claro do GTK e do Shell, e o terminal, VS Code (`uiTheme: vs`), Neovim (`background=light`), Starship e btop acompanham a paleta. Os wallpapers existentes são usados como estão; os "gerados" usam sempre a versão escura da paleta. Sem desfoque real na barra e na dock (o Shell não tem filtro de fundo sem extensão).
+
 ## Personalizar
 
 No app **Nebulix** ou pela CLI (aplica ao salvar):
 
 ```bash
-nebulix config set accent=magenta variant=darker radius=10
+nebulix config set accent=magenta variant=darker radius=10      # accent do tema ativo
 nebulix config set window_buttons=mac topbar=solid dock_position=left
 nebulix config set wallpaper=gen-orbit        # versões geradas seguem a cor de destaque
 ```
-Chaves: `accent` (nebulix, magenta, cyan, blue, green, amber ou `#RRGGBB`), `variant` (dark, darker), `radius` (6 a 20), `window_buttons` (gnome, mac), `topbar` (floating, solid), `dock` (macos, ubuntu), `dock_position` (bottom, left, right), `dock_icon_size`, `dock_opacity`, `icons` (whitesur, papirus, keep), `wallpaper`, `components`. O arquivo fica em `~/.config/nebulix/config.toml`.
+Chaves: `theme` (nebulix, macos-dark, macos-light, nebulix-light), `accent` (`auto`, um nome do tema ou `#RRGGBB`; Nebulix: nebulix, magenta, cyan, blue, green, amber; macOS: blue, purple, pink, red, orange, yellow, green, graphite), `variant` (dark, darker; só nos temas escuros), `radius` (6 a 20), `window_buttons` (gnome, mac), `topbar` (floating, solid, translucent), `font` (auto, keep), `dock` (macos, ubuntu), `dock_position` (bottom, left, right), `dock_icon_size`, `dock_opacity`, `icons` (whitesur, papirus, keep), `wallpaper`, `components`. O arquivo fica em `~/.config/nebulix/config.toml`.
 
 ## Voltar ao padrão
 
@@ -48,6 +63,6 @@ Os dois também estão na aba **Restaurar** do app. Depois, `sudo apt remove neb
 - O tema do VS Code é copiado para `~/.vscode/extensions`; reinicie o editor.
 
 ## Desenvolver
-`python3 -m unittest discover -s tests` (tudo em HOME descartável), `python3 build.py` (contraste WCAG para cada destaque e variante), `./package.sh` (gera `release/`). Veja `CONTRIBUTING.md`.
+`python3 -m unittest discover -s tests` (tudo em HOME descartável), `python3 build.py` (contraste WCAG para cada tema, destaque e variante), `./package.sh` (gera `release/`). Veja `CONTRIBUTING.md`.
 
 Licenças: código GPL-3.0-or-later (`LICENSE`), arte CC BY-SA 4.0 (`LICENSE-ART`), tema VS Code e Neovim MIT.

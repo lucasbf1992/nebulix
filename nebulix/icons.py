@@ -8,14 +8,32 @@ import tempfile
 import urllib.request
 from pathlib import Path
 
-from . import paths, palette
+from . import paths, palette, themes
 
 WHITESUR_TAG = "v2025-02-10"
 WHITESUR_URL = f"https://github.com/vinceliuice/WhiteSur-icon-theme/archive/refs/tags/{WHITESUR_TAG}.tar.gz"
 WHITESUR_SHA256 = "b94a3db27bd746c267b882a957f863e3ef62eebec7d21c4436b90913597386a6"
 WHITESUR_SIZE_MB = 7
 THEME_NAME = "Nebulix-Icons"
-BASE = "WhiteSur-purple-dark"
+
+
+def whitesur_color(theme):
+    """WhiteSur colour variant of a theme (`-t` of the pinned installer): blue (default) for macOS, purple for Nebulix."""
+    return themes.get(theme)["icons"]["color"]
+
+
+def base_name(theme):
+    th = themes.get(theme)
+    c = th["icons"]["color"]
+    return "WhiteSur" + ("" if c == "default" else f"-{c}") + f"-{th['scheme']}"
+
+
+def uses_overlay(theme):
+    return themes.get(theme)["icons"]["overlay"]
+
+
+def fallback_name(theme):
+    return "Papirus-Dark" if themes.get(theme)["scheme"] == "dark" else "Papirus-Light"
 
 
 def icon_dirs():
@@ -26,9 +44,10 @@ def has_theme(name):
     return any((d / name).is_dir() for d in icon_dirs())
 
 
-def ensure_whitesur(log=print):
+def ensure_whitesur(log=print, theme="nebulix"):
     """Download the pinned tarball, verify sha256 and run its own installer into ~/.local/share/icons."""
-    if has_theme(BASE):
+    base = base_name(theme)
+    if has_theme(base):
         return True
     log(f"baixando WhiteSur {WHITESUR_TAG} (~{WHITESUR_SIZE_MB} MB, GPL-3.0)")
     with tempfile.TemporaryDirectory() as tmp:
@@ -45,9 +64,9 @@ def ensure_whitesur(log=print):
         src = next(out.iterdir())
         dest = paths.data_home() / "icons"
         dest.mkdir(parents=True, exist_ok=True)
-        subprocess.run(["bash", str(src / "install.sh"), "-d", str(dest), "-t", "purple"], check=True,
+        subprocess.run(["bash", str(src / "install.sh"), "-d", str(dest), "-t", whitesur_color(theme)], check=True,
                        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, cwd=src)
-    return has_theme(BASE)
+    return has_theme(base)
 
 
 def _folder(t, glyph=""):
@@ -59,7 +78,7 @@ def _folder(t, glyph=""):
 <path d="M6 14a6 6 0 0 1 6-6h13.5a6 6 0 0 1 4.6 2.2l2.3 2.8H52a6 6 0 0 1 6 6v6H6z" fill="url(#b)"/>
 <rect x="6" y="18" width="52" height="38" rx="7" fill="url(#f)"/>
 <rect x="6.5" y="18.5" width="51" height="37" rx="6.5" fill="none" stroke="#fff" stroke-opacity=".28"/>
-<g fill="none" stroke="{t["fg-0"]}" stroke-opacity=".92" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">{glyph}</g></svg>'''
+<g fill="none" stroke="{t["ink-light"]}" stroke-opacity=".92" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">{glyph}</g></svg>'''
 
 
 GLYPHS = {
@@ -75,11 +94,12 @@ GLYPHS = {
 }
 
 
-def write_overlay(t, root=None):
+def write_overlay(t, root=None, theme="nebulix"):
     root = Path(root) if root else paths.data_home() / "icons" / THEME_NAME
     shutil.rmtree(root, ignore_errors=True)
     (root / "scalable/places").mkdir(parents=True)
-    inherits = ",".join([BASE] if has_theme(BASE) else []) + ("," if has_theme(BASE) else "") + "Papirus-Dark,hicolor"
+    base, fb = base_name(theme), fallback_name(theme)
+    inherits = ",".join([base] if has_theme(base) else []) + ("," if has_theme(base) else "") + f"{fb},hicolor"
     (root / "index.theme").write_text(
         f"[Icon Theme]\nName={THEME_NAME}\nComment=Nebulix squircle folders over WhiteSur/Papirus\n"
         f"Inherits={inherits}\nDirectories=scalable/places\n\n"

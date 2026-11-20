@@ -9,7 +9,7 @@ import tempfile
 import uuid
 from pathlib import Path
 
-from . import __version__, config, gen, icons, paths, palette, render, wallpapers
+from . import __version__, config, gen, icons, paths, palette, render, themes, wallpapers
 from .state import State, gs
 
 UT = "user-theme@gnome-shell-extensions.gcampax.github.com"
@@ -17,14 +17,14 @@ DOCK = "org.gnome.shell.extensions.dash-to-dock"
 IFACE = "org.gnome.desktop.interface"
 TESTED_GNOME = ("50", "51")
 TOUCHED_KEYS = [
-    (IFACE, "color-scheme"), (IFACE, "accent-color"), (IFACE, "gtk-theme"), (IFACE, "icon-theme"),
+    (IFACE, "color-scheme"), (IFACE, "accent-color"), (IFACE, "gtk-theme"), (IFACE, "icon-theme"), (IFACE, "font-name"),
     ("org.gnome.desktop.background", "picture-uri"), ("org.gnome.desktop.background", "picture-uri-dark"),
     ("org.gnome.desktop.screensaver", "picture-uri"), ("org.gnome.shell.extensions.user-theme", "name"),
     ("org.gnome.desktop.wm.preferences", "button-layout"),
 ] + [(DOCK, k) for k in ("dock-position", "extend-height", "dash-max-icon-size", "transparency-mode", "background-opacity",
                          "apply-custom-theme", "show-apps-at-top", "running-indicator-style",
                          "custom-theme-customize-running-dots", "custom-theme-running-dots-color", "click-action")]
-THEME = "Nebulix-Dark"
+THEMES_DIRS = ("Nebulix-Dark", "Nebulix-Light")  # one directory per colour scheme
 
 
 def q(s):
@@ -48,18 +48,20 @@ def render_all(cfg, out: Path, log=print):
     return t
 
 
-STOCK_IMPORT = '@import url("resource:///org/gnome/shell/theme/gnome-shell-dark.css");'
+STOCK_IMPORT = re.compile(r'@import url\("resource:///org/gnome/shell/theme/gnome-shell-(dark|light)\.css"\);')
 SHELL_GRESOURCE = "/usr/share/gnome-shell/gnome-shell-theme.gresource"
 
 
 def inline_stock_shell_css(text):
-    """Prepend the stock dark Shell stylesheet, extracted locally from the installed gnome-shell.
+    """Prepend the stock Shell stylesheet (dark or light), extracted locally from the installed gnome-shell.
     This keeps the theme working even if the Shell does not resolve @import of resources; nothing is redistributed."""
-    if shutil.which("gresource"):
-        r = subprocess.run(["gresource", "extract", SHELL_GRESOURCE, "/org/gnome/shell/theme/gnome-shell-dark.css"],
+    m = STOCK_IMPORT.search(text)
+    if m and shutil.which("gresource"):
+        r = subprocess.run(["gresource", "extract", SHELL_GRESOURCE, f"/org/gnome/shell/theme/gnome-shell-{m.group(1)}.css"],
                            capture_output=True, text=True)
         if r.returncode == 0 and r.stdout.strip():
-            return text.replace(STOCK_IMPORT, "/* stock GNOME Shell dark stylesheet, extracted from your gnome-shell install (GPL-2.0-or-later) */\n" + r.stdout)
+            head = f"/* stock GNOME Shell {m.group(1)} stylesheet, extracted from your gnome-shell install (GPL-2.0-or-later) */\n"
+            return text[:m.start()] + head + r.stdout + text[m.end():]
     return text
 
 
@@ -100,7 +102,16 @@ def apply(cfg=None, dry=False, log=print, install_icons=False, only=None):
         t = render_all(cfg, stage, log)
         home, conf, data = paths.home(), paths.conf_home(), paths.data_home()
         acc = t["purple"]
+        THEME = t["theme-name"]
         if "gtk" in comps or "shell" in comps:
+            # switching between a dark and a light theme leaves the other directory behind: forget it
+            _forget(st, lambda e: any(e.startswith(str(data / "themes" / d) + "/") for d in THEMES_DIRS if d != THEME))
+            for d in THEMES_DIRS:
+                if d != THEME and not st.dry:
+                    try:
+                        (data / "themes" / d).rmdir()  # only when empty
+                    except OSError:
+                        pass
             theme = data / "themes" / THEME
             st.put_text((stage / "index.theme").read_text(), theme / "index.theme")
         if "gtk" in comps:
@@ -109,8 +120,8 @@ def apply(cfg=None, dry=False, log=print, install_icons=False, only=None):
             st.put_text((stage / "gtk-4.0/colors.css").read_text(), conf / "gtk-4.0/nebulix-colors.css")
             st.put_text((stage / "gtk-4.0/tweaks.css").read_text(), conf / "gtk-4.0/nebulix-tweaks.css")
             _gtk4_block(st, conf / "gtk-4.0/gtk.css")
-            st.gs_set(IFACE, "color-scheme", "'prefer-dark'")
-            st.gs_set(IFACE, "accent-color", q(config.GNOME_ACCENT.get(cfg["accent"], "purple")))
+            st.gs_set(IFACE, "color-scheme", "'prefer-dark'" if t["scheme"] == "dark" else "'prefer-light'")
+            st.gs_set(IFACE, "accent-color", q(config.gnome_accent(cfg)))
             st.gs_set(IFACE, "gtk-theme", q(THEME))
             if shutil.which("flatpak") and not dry and "flatpak" not in st.manifest:
                 r = subprocess.run(["flatpak", "override", "--user", "--filesystem=xdg-config/gtk-4.0:ro",
@@ -119,11 +130,12 @@ def apply(cfg=None, dry=False, log=print, install_icons=False, only=None):
                     st.note("flatpak")
             wm = "'close,minimize,maximize:appmenu'" if cfg["window_buttons"] == "mac" else "'appmenu:minimize,maximize,close'"
             st.gs_set("org.gnome.desktop.wm.preferences", "button-layout", wm)
+            _font(st, cfg)
         if "shell" in comps:
             css = stage / "gnome-shell/gnome-shell.css"
             css.write_text(inline_stock_shell_css(css.read_text()))
             st.put_tree(stage / "gnome-shell", data / "themes" / THEME / "gnome-shell")
-            _shell_enable(st, dry, log)
+            _shell_enable(st, dry, log, THEME)
             _dock(st, cfg, acc)
         if "terminal" in comps:
             st.put_text((stage / "terminal/nebulix.palette").read_text(), data / "org.gnome.Ptyxis/palettes/nebulix.palette")
@@ -179,7 +191,7 @@ def _gtk4_block(st, g4: Path):
     st.note(f"gtkblock:{g4}")
 
 
-def _shell_enable(st, dry, log):
+def _shell_enable(st, dry, log, theme_name):
     if not shutil.which("gnome-extensions"):
         return
     lst = subprocess.run(["gnome-extensions", "list"], capture_output=True, text=True).stdout.split()
@@ -194,7 +206,7 @@ def _shell_enable(st, dry, log):
         st.note(f"ext:{UT}")
     # toggling the name makes the running Shell reload the stylesheet without a logout
     subprocess.run(["gsettings", "set", "org.gnome.shell.extensions.user-theme", "name", "''"], capture_output=True)
-    st.gs_set("org.gnome.shell.extensions.user-theme", "name", q(THEME))
+    st.gs_set("org.gnome.shell.extensions.user-theme", "name", q(theme_name))
 
 
 DOCK_KEYS = [k for s, k in TOUCHED_KEYS if s == DOCK]
@@ -238,12 +250,14 @@ def _wallpaper(st, cfg, t, stage, dry, log):
         return
     if d.startswith("gen-"):  # generated in code, follows the accent
         w, h = wallpapers.SIZES[cfg["wallpaper_size"]]
-        tag = hashlib.sha1(json.dumps([t["purple"], cfg["variant"], d, w, h]).encode()).hexdigest()[:8]
+        wcfg = dict(cfg, theme=themes.get(cfg["theme"])["wallpaper_from"], accent=t["purple"])
+        wt = palette.tokens(wcfg)[1]
+        tag = hashlib.sha1(json.dumps([wt["purple"], wcfg["theme"], cfg["variant"], d, w, h]).encode()).hexdigest()[:8]
         name = f"nebulix-{d}-{tag}.png"
         dest = wdir / name
         if not dest.exists() and not dry:
             log(f"→ renderizando wallpaper {d} {w}x{h}")
-            wallpapers.rasterize(wallpapers.svg(d[4:], w, h, t), stage / name)
+            wallpapers.rasterize(wallpapers.svg(d[4:], w, h, wt), stage / name)
             src = stage / name
         else:
             src = dest if dest.exists() else None
@@ -261,26 +275,51 @@ def _wallpaper(st, cfg, t, stage, dry, log):
     st.gs_set("org.gnome.desktop.screensaver", "picture-uri", uri)
 
 
+def has_font(family):
+    fc = shutil.which("fc-list")
+    return bool(fc) and family.lower() in subprocess.run([fc], capture_output=True, text=True).stdout.lower()
+
+
+def _font(st, cfg):
+    """Interface font of the theme (Inter for the macOS themes), only when installed and not set to 'keep'."""
+    font = themes.get(cfg["theme"]).get("font")
+    if cfg["font"] == "keep" or not font:
+        st.gs_release(IFACE, "font-name")
+        return
+    if not has_font(font.rsplit(" ", 1)[0]):
+        st.gs_release(IFACE, "font-name")
+        st.missing.append((f"fonte {font.rsplit(' ', 1)[0]} ausente (usada pelo tema {themes.get(cfg['theme'])['label']})", "sudo apt install fonts-inter"))
+        return
+    st.gs_set(IFACE, "font-name", q(font))
+
+
 def _icons(st, cfg, t, stage, dry, install, log):
-    mode = cfg["icons"]
+    mode, theme = cfg["icons"], cfg["theme"]
+    base, fb = icons.base_name(theme), icons.fallback_name(theme)
     if mode == "keep":
         st.gs_release(IFACE, "icon-theme")
         return
     if mode == "papirus":
-        if icons.has_theme("Papirus-Dark"):
-            st.gs_set(IFACE, "icon-theme", "'Papirus-Dark'")
+        if icons.has_theme(fb):
+            st.gs_set(IFACE, "icon-theme", q(fb))
         else:
-            st.missing.append(("Papirus-Dark ausente", "sudo apt install papirus-icon-theme"))
+            st.missing.append((f"{fb} ausente", "sudo apt install papirus-icon-theme"))
         return
-    if not icons.has_theme(icons.BASE):
+    if not icons.has_theme(base):
         if install and not dry:
             try:
-                icons.ensure_whitesur(log)
+                icons.ensure_whitesur(log, theme)
             except Exception as e:  # network or checksum failure: fall back to Papirus
                 log(f"! WhiteSur indisponível ({e}); usando Papirus")
         else:
             st.missing.append(("ícones estilo macOS (WhiteSur) não instalados; usando Papirus por enquanto", "nebulix icons install   (baixa ~7 MB, GPL-3.0)"))
-    root = icons.write_overlay(t, stage / "icons" / icons.THEME_NAME) if not dry else None
+    if not icons.uses_overlay(theme):  # macOS themes: plain WhiteSur
+        if icons.has_theme(base):
+            st.gs_set(IFACE, "icon-theme", q(base))
+        elif icons.has_theme(fb):
+            st.gs_set(IFACE, "icon-theme", q(fb))
+        return
+    root = icons.write_overlay(t, stage / "icons" / icons.THEME_NAME, theme) if not dry else None
     if root:
         st.put_tree(root, paths.data_home() / "icons" / icons.THEME_NAME)
     st.gs_set(IFACE, "icon-theme", q(icons.THEME_NAME))

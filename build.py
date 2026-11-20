@@ -1,28 +1,32 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: GPL-3.0-or-later
-"""Dev/CI build: renders the default theme into dist/ and checks contrast for every accent x variant."""
+"""Dev/CI build: checks contrast for every theme x accent x variant, renders the default theme into dist/."""
 import shutil
 import sys
-from itertools import product
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
 sys.path.insert(0, str(ROOT))
-from nebulix import config, palette  # noqa: E402
+from nebulix import config, palette, themes  # noqa: E402
 from nebulix.apply import render_all  # noqa: E402
 
 
 def main():
     bad = 0
-    for acc, var in product(config.ACCENTS, config.CHOICES["variant"]):
-        cfg = config.validate({"accent": acc, "variant": var})
-        for a, b, c, need in palette.contrast_report(cfg):
-            if c < need:
-                bad += 1
-                print(f"contraste {acc}/{var}: {a} sobre {b} = {c:.2f} (< {need})")
+    n = 0
+    for th in config.CHOICES["theme"]:
+        variants = config.CHOICES["variant"] if themes.get(th)["scheme"] == "dark" else ("dark",)
+        for acc in ("auto", *themes.accent_names(th)):
+            for var in variants:
+                n += 1
+                cfg = config.validate({"theme": th, "accent": acc, "variant": var})
+                for a, b, c, need in palette.contrast_report(cfg):
+                    if c < need:
+                        bad += 1
+                        print(f"contraste {th}/{acc}/{var}: {a} sobre {b} = {c:.2f} (< {need})")
     if bad:
         sys.exit(f"{bad} combinações abaixo do contraste mínimo")
-    print("contraste ok para todos os destaques e variantes")
+    print(f"contraste ok em {n} combinações de tema x destaque x variante")
     dist = ROOT / "dist"
     shutil.rmtree(dist, ignore_errors=True)
     dist.mkdir()

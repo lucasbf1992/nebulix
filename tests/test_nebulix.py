@@ -62,23 +62,63 @@ class Sandbox(unittest.TestCase):
 class TestConfig(unittest.TestCase):
     def test_validate(self):
         from nebulix import config
-        self.assertEqual(config.validate({})["accent"], "nebulix")
+        self.assertEqual(config.validate({})["accent"], "auto")
+        self.assertEqual(config.accent_hex(config.validate({})), "#A66BFF")
         config.validate({"accent": "#12ABef", "radius": 6})
         for bad in ({"accent": "roxo"}, {"radius": 99}, {"variant": "x"}, {"components": ["nope"]}, {"dock_opacity": True}):
             with self.assertRaises(ValueError):
                 config.validate(bad)
 
-    def test_contrast_all_accents(self):
+    def test_contrast_all_themes_and_accents(self):
+        from nebulix import config, palette, themes
+        for th in config.CHOICES["theme"]:
+            for acc, var in product(("auto", *themes.accent_names(th)), config.CHOICES["variant"]):
+                for a, b, c, need in palette.contrast_report(config.validate({"theme": th, "accent": acc, "variant": var})):
+                    self.assertGreaterEqual(c, need, f"{th}/{acc}/{var} {a} on {b}")
+
+    def test_custom_hex_accent_keeps_contrast_in_every_theme(self):
         from nebulix import config, palette
-        for acc, var in product(config.ACCENTS, config.CHOICES["variant"]):
-            for a, b, c, need in palette.contrast_report(config.validate({"accent": acc, "variant": var})):
-                self.assertGreaterEqual(c, need, f"{acc}/{var} {a} on {b}")
+        for th in config.CHOICES["theme"]:
+            for hx in ("#FFFF00", "#000080", "#808080", "#00FF00"):
+                for a, b, c, need in palette.contrast_report(config.validate({"theme": th, "accent": hx})):
+                    if a in ("accent-text", "on-fill", "on-solid"):
+                        self.assertGreaterEqual(c, need, f"{th}/{hx} {a} on {b}")
+
+    def test_theme_catalogue_matches_config_choices(self):
+        from nebulix import config, themes
+        self.assertEqual(set(config.CHOICES["theme"]), set(themes.ids()))
+
+    def test_theme_package_and_accent_rules(self):
+        from nebulix import config, themes
+        c = config.apply_theme(config.validate({"accent": "magenta", "radius": 20}), "macos-dark")
+        self.assertEqual((c["theme"], c["accent"], c["window_buttons"], c["topbar"], c["radius"]),
+                         ("macos-dark", "auto", "mac", "translucent", 10))
+        self.assertEqual(config.accent_hex(c), "#0A84FF")
+        self.assertEqual(config.gnome_accent(c), "blue")
+        config.validate(dict(c, accent="graphite"))
+        with self.assertRaises(ValueError):
+            config.validate(dict(c, accent="magenta"))  # a Nebulix-only accent name
+        with self.assertRaises(ValueError):
+            config.apply_theme(c, "nao-existe")
+        self.assertEqual(themes.resolve("macos"), "macos-dark")
+        self.assertEqual(config.apply_theme(c, "nebulix")["window_buttons"], "gnome")
+        # each item stays adjustable after choosing a theme
+        self.assertEqual(config.validate(dict(c, radius=18, window_buttons="gnome"))["radius"], 18)
+
+    def test_light_themes_are_light(self):
+        from nebulix import config, palette
+        for th in ("macos-light", "nebulix-light"):
+            _, t = palette.tokens(config.validate({"theme": th}))
+            self.assertEqual(t["scheme"], "light")
+            self.assertGreater(palette.lum(t["bg-1"]), palette.lum(t["fg-0"]))
+        _, t = palette.tokens(config.validate({"theme": "macos-dark"}))
+        self.assertEqual((t["bg-0"], t["fg-0"], t["purple"]), ("#161616", "#F5F5F7", "#0A84FF"))
 
     def test_templates_render_everywhere(self):
         from nebulix import config, palette, render, paths
         base = paths.data_dir() / "templates"
-        for var, wb, bar, dock in product(("dark", "darker"), ("gnome", "mac"), ("floating", "solid"), ("macos", "ubuntu")):
-            cfg = config.validate({"variant": var, "window_buttons": wb, "topbar": bar, "dock": dock, "radius": 20})
+        for th, var, wb, bar, dock in product(config.CHOICES["theme"], ("dark", "darker"), ("gnome", "mac"), config.CHOICES["topbar"], ("macos", "ubuntu")):
+            cfg = config.validate({"theme": th, "variant": var, "window_buttons": wb, "topbar": bar, "dock": dock, "radius": 20})
             _, t = palette.tokens(cfg)
             for f in base.rglob("*"):
                 if f.is_file():
@@ -174,7 +214,159 @@ class TestApply(Sandbox):
         self.assertEqual(self.gs()["org.gnome.desktop.interface|gtk-theme"], "'Yaru'")
 
 
+class TestThemes(Sandbox):
+    def cfg(self, **kw):
+        from nebulix import config
+        base = {"wallpaper": "none"}
+        base.update(kw)
+        return config.validate(base)
+
+    def render(self, **kw):
+        from nebulix import config
+        from nebulix.apply import render_all
+        out = self.tmp / "out"
+        shutil.rmtree(out, ignore_errors=True)
+        out.mkdir()
+        render_all(config.apply_theme(self.cfg(), kw.pop("theme")), out)
+        return out
+
+    def test_light_theme_uses_light_stylesheets_and_editors(self):
+        out = self.render(theme="macos-light")
+        self.assertIn("gtk-contained.css", (out / "gtk-3.0/gtk.css").read_text())
+        self.assertNotIn("gtk-contained-dark", (out / "gtk-3.0/gtk.css").read_text())
+        self.assertIn("Default-light.css", (out / "gtk-4.0/gtk.css").read_text())
+        self.assertIn("gnome-shell-light.css", (out / "gnome-shell/gnome-shell.css").read_text())
+        self.assertIn("vim.o.background = 'light'", (out / "nvim/colors/nebulix.lua").read_text())
+        pkg = json.loads((out / "vscode/nebulix-theme/package.json").read_text())
+        self.assertEqual(pkg["contributes"]["themes"][0]["uiTheme"], "vs")
+        theme = json.loads((out / "vscode/nebulix-theme/themes/nebulix-color-theme.json").read_text())
+        self.assertEqual((theme["type"], theme["colors"]["editor.background"]), ("light", "#FFFFFF"))
+        self.assertIn("#FFFFFF", (out / "btop/nebulix.theme").read_text())
+        self.assertIn("Name=Nebulix-Light", (out / "index.theme").read_text())
+
+    def test_dark_theme_keeps_dark_stylesheets(self):
+        for th in ("nebulix", "macos-dark"):
+            out = self.render(theme=th)
+            self.assertIn("gtk-contained-dark.css", (out / "gtk-3.0/gtk.css").read_text())
+            self.assertIn("gnome-shell-dark.css", (out / "gnome-shell/gnome-shell.css").read_text())
+            self.assertIn("vim.o.background = 'dark'", (out / "nvim/colors/nebulix.lua").read_text())
+
+    def test_macos_dark_colours_and_translucent_bar(self):
+        out = self.render(theme="macos-dark")
+        colors = (out / "gtk-4.0/colors.css").read_text()
+        self.assertIn("@define-color window_bg_color #1E1E1E;", colors)
+        self.assertIn("@define-color accent_bg_color #0065CC;", colors)  # blue darkened to keep 4.5:1 with white text
+        self.assertIn("#0A84FF", (out / "gtk-4.0/tweaks.css").read_text() + (out / "gnome-shell/gnome-shell.css").read_text())
+        shell = (out / "gnome-shell/gnome-shell.css").read_text()
+        self.assertIn("rgba(30, 30, 30, 0.7) !important", shell)  # beats Yaru's #panel rule
+        self.assertIn("windowcontrols button.close", (out / "gtk-4.0/tweaks.css").read_text())
+        self.assertNotIn("radius-lg", shell)
+
+    def test_apply_each_theme_then_undo(self):
+        from nebulix import config
+        from nebulix.apply import apply
+        from nebulix.restore import restore
+        (self.home / ".config").mkdir()
+        before = self.snapshot()
+        expect = {"nebulix": ("'prefer-dark'", "'Nebulix-Dark'"), "macos-dark": ("'prefer-dark'", "'Nebulix-Dark'"),
+                  "macos-light": ("'prefer-light'", "'Nebulix-Light'"), "nebulix-light": ("'prefer-light'", "'Nebulix-Light'")}
+        for th, (scheme, gtk) in expect.items():
+            apply(config.apply_theme(self.cfg(), th), log=lambda *_: None)
+            g = self.gs()
+            self.assertEqual(g["org.gnome.desktop.interface|color-scheme"], scheme, th)
+            self.assertEqual(g["org.gnome.desktop.interface|gtk-theme"], gtk, th)
+            themes_dir = self.home / ".local/share/themes"
+            self.assertEqual([p.name for p in themes_dir.iterdir()], [gtk.strip("'")], th)  # the other scheme's dir is gone
+        restore("undo", log=lambda *_: None)
+        self.assertEqual(self.snapshot(), before)
+
+    def test_macos_uses_plain_whitesur_and_nebulix_uses_overlay(self):
+        from nebulix import config, icons
+        from nebulix.apply import apply
+        for n in ("WhiteSur-dark", "WhiteSur-light", "WhiteSur-purple-dark", "WhiteSur-purple-light"):
+            (self.home / ".local/share/icons" / n).mkdir(parents=True)
+        key = "org.gnome.desktop.interface|icon-theme"
+        apply(config.apply_theme(self.cfg(), "macos-dark"), log=lambda *_: None)
+        self.assertEqual(self.gs()[key], "'WhiteSur-dark'")
+        apply(config.apply_theme(self.cfg(), "macos-light"), log=lambda *_: None)
+        self.assertEqual(self.gs()[key], "'WhiteSur-light'")
+        apply(config.apply_theme(self.cfg(), "nebulix-light"), log=lambda *_: None)
+        self.assertEqual(self.gs()[key], "'Nebulix-Icons'")
+        idx = (self.home / ".local/share/icons/Nebulix-Icons/index.theme").read_text()
+        self.assertIn("Inherits=WhiteSur-purple-light", idx)
+        self.assertEqual(icons.base_name("macos-dark"), "WhiteSur-dark")
+        self.assertEqual(icons.whitesur_color("macos-dark"), "default")
+
+    def test_whitesur_install_variant_is_passed_to_installer(self):
+        from nebulix import icons
+        self.assertEqual(icons.whitesur_color("nebulix"), "purple")
+        self.assertEqual(icons.whitesur_color("macos-light"), "default")
+
+    def test_font_follows_theme_only_when_installed(self):
+        from unittest import mock
+        from nebulix import config
+        from nebulix.apply import apply
+        key = "org.gnome.desktop.interface|font-name"
+        with mock.patch("nebulix.apply.has_font", return_value=False):
+            st = apply(config.apply_theme(self.cfg(), "macos-dark"), log=lambda *_: None)
+        self.assertNotIn(key, self.gs())
+        self.assertTrue(any("Inter" in m for m, _ in st.missing))
+        with mock.patch("nebulix.apply.has_font", return_value=True):
+            apply(config.apply_theme(self.cfg(), "macos-dark"), log=lambda *_: None)
+            self.assertEqual(self.gs()[key], "'Inter 11'")
+            apply(dict(config.apply_theme(self.cfg(), "macos-dark"), font="keep"), log=lambda *_: None)
+            self.assertEqual(self.gs()[key], "'default'")  # released back to the original
+            apply(config.apply_theme(self.cfg(), "nebulix"), log=lambda *_: None)
+
+    def test_generated_wallpaper_of_light_theme_is_rendered_from_dark_tokens(self):
+        from nebulix import config
+        from nebulix.apply import apply
+        apply(config.apply_theme(self.cfg(wallpaper="gen-horizon", wallpaper_size="1080p"), "macos-light"), log=lambda *_: None, only=["wallpaper"])
+        self.assertTrue(list((self.home / ".local/share/backgrounds/nebulix").glob("nebulix-gen-horizon-*.png")))
+
+    def test_gtk_css_parses_for_every_theme(self):
+        try:
+            import gi
+            gi.require_version("Gtk", "4.0")
+            from gi.repository import Gtk
+        except Exception:
+            self.skipTest("GTK4 indisponível")
+        from nebulix import config
+        for th in config.CHOICES["theme"]:
+            out = self.render(theme=th)
+            for f in ("colors.css", "tweaks.css"):
+                errs = []
+                prov = Gtk.CssProvider()
+                prov.connect("parsing-error", lambda _p, sec, e: errs.append(e.message))
+                prov.load_from_string((out / "gtk-4.0" / f).read_text())
+                self.assertEqual(errs, [], f"{th}/{f}")
+
+
 class TestCli(Sandbox):
+    def test_theme_command(self):
+        from nebulix import cli, config
+        self.assertEqual(cli.main(["theme", "macos-dark", "--no-apply"]), 0)
+        c = config.load()
+        self.assertEqual((c["theme"], c["accent"], c["window_buttons"]), ("macos-dark", "auto", "mac"))
+        self.assertEqual(cli.main(["theme", "claro", "--no-apply"]), 0)
+        self.assertEqual(config.load()["theme"], "macos-light")
+        self.assertEqual(cli.main(["theme", "xyz"]), 2)
+        self.assertEqual(config.load()["theme"], "macos-light")
+        self.assertEqual(cli.main(["theme"]), 0)
+        c["wallpaper"] = "none"
+        config.save(c)
+        self.assertEqual(cli.main(["theme", "nebulix"]), 0)
+        self.assertEqual(self.gs()["org.gnome.desktop.interface|gtk-theme"], "'Nebulix-Dark'")
+
+    def test_old_config_without_theme_still_works(self):
+        from nebulix import config
+        f = self.home / ".config/nebulix/config.toml"
+        f.parent.mkdir(parents=True)
+        f.write_text('accent = "magenta"\nvariant = "darker"\nradius = 10\n')
+        c = config.load()
+        self.assertEqual((c["theme"], c["accent"]), ("nebulix", "magenta"))
+        self.assertEqual(config.accent_hex(c), "#FF4FD8")
+
     def test_config_set_applies_and_persists(self):
         from nebulix import cli, config
         self.assertEqual(cli.main(["config", "set", "wallpaper=none", "accent=cyan", "radius=10"]), 0)

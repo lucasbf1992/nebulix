@@ -8,18 +8,20 @@ gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
 from gi.repository import Adw, Gdk, GLib, Gtk  # noqa: E402
 
-from . import __version__, config, doctor, icons, paths  # noqa: E402
+from . import __version__, config, doctor, icons, paths, themes  # noqa: E402
 from .apply import apply  # noqa: E402
 from .restore import restore  # noqa: E402
 
 APP_ID = "io.github.nebulix.Settings"
 LABELS = {
+    "theme": {tid: themes.get(tid)["label"] for tid in config.CHOICES["theme"]},
     "variant": {"dark": "Dark", "darker": "Darker (preto OLED)"},
     "window_buttons": {"gnome": "GNOME (à direita)", "mac": "Semáforo macOS (à esquerda)"},
-    "topbar": {"floating": "Flutuante (pílulas)", "solid": "Sólida"},
+    "topbar": {"floating": "Flutuante (pílulas)", "solid": "Sólida", "translucent": "Translúcida (largura total)"},
     "dock": {"macos": "Estilo macOS (flutuante, centralizada)", "ubuntu": "Não alterar (padrão do Ubuntu)"},
     "dock_position": {"bottom": "Embaixo", "left": "Esquerda", "right": "Direita"},
-    "icons": {"whitesur": "Estilo macOS (WhiteSur + pastas Nebulix)", "papirus": "Papirus-Dark", "keep": "Não alterar"},
+    "icons": {"whitesur": "Estilo macOS (WhiteSur, variante do tema)", "papirus": "Papirus (claro ou escuro, conforme o tema)", "keep": "Não alterar"},
+    "font": {"auto": "Do tema (Inter nos temas macOS, se instalada)", "keep": "Não alterar"},
     "wallpaper": {"orbit": "Órbita", "horizon": "Horizonte", "circuit": "Circuito", "code": "Código", "gen-orbit": "Órbita (gerada, segue o destaque)", "gen-horizon": "Horizonte (gerado, segue o destaque)", "gen-circuit": "Circuito (gerado, segue o destaque)", "gen-code": "Código (gerado, segue o destaque)", "none": "Não alterar"},
     "wallpaper_size": {"1080p": "1080p", "1440p": "1440p", "4k": "4K", "ultrawide": "Ultrawide 21:9"},
 }
@@ -35,9 +37,8 @@ class SettingsWindow(Adw.PreferencesWindow):
         self._timer = None
         self._css = Gtk.CssProvider()
         Gtk.StyleContext.add_provider_for_display(Gdk.Display.get_default(), self._css, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
-        css = "".join(f".nbx-{n} {{ background: {h}; border-radius: 99px; min-width: 26px; min-height: 26px; padding: 0; }}"
-                      f".nbx-{n}:checked {{ box-shadow: 0 0 0 3px alpha(currentColor, .8); }}" for n, h in config.ACCENTS.items())
-        self._css.load_from_string(css)
+        self.rows = {}  # config key -> (row, options) so a theme change can refresh every control
+        self._syncing = False
         self.status_row = Adw.ActionRow()
         self.apply_btn = Gtk.Button(label="Aplicar agora", valign=Gtk.Align.CENTER)
         self.apply_btn.add_css_class("suggested-action")
@@ -71,12 +72,22 @@ class SettingsWindow(Adw.PreferencesWindow):
         return False
 
     def set(self, key, value):
-        self.cfg[key] = value
-        try:
-            config.validate(self.cfg)
-        except ValueError as e:
-            self.add_toast(Adw.Toast(title=str(e)))
-            return
+        if key == "theme":  # a theme brings a whole package of values
+            try:
+                self.cfg = config.apply_theme(self.cfg, value)
+            except ValueError as e:
+                self.add_toast(Adw.Toast(title=str(e)))
+                return
+            self._sync()
+        else:
+            self.cfg[key] = value
+            try:
+                config.validate(self.cfg)
+            except ValueError as e:
+                self.add_toast(Adw.Toast(title=str(e)))
+                return
+            if key == "accent":
+                self._mark_accent()
         config.save(self.cfg)
         if self._timer:
             GLib.source_remove(self._timer)
@@ -101,8 +112,9 @@ class SettingsWindow(Adw.PreferencesWindow):
         opts = list(LABELS[key])
         row = Adw.ComboRow(title=title, subtitle=subtitle or "", model=Gtk.StringList.new([LABELS[key][o] for o in opts]))
         row.set_selected(opts.index(self.cfg[key]))
-        row.connect("notify::selected", lambda r, _p: self.set(key, opts[r.get_selected()]))
+        row.connect("notify::selected", lambda r, _p: not self._syncing and self.set(key, opts[r.get_selected()]))
         group.add(row)
+        self.rows[key] = (row, opts)
         return row
 
     def spin(self, group, title, key, lo, hi, subtitle=""):
@@ -110,8 +122,55 @@ class SettingsWindow(Adw.PreferencesWindow):
         row.set_title(title)
         row.set_subtitle(subtitle)
         row.set_value(self.cfg[key])
-        row.connect("notify::value", lambda r, _p: self.set(key, int(r.get_value())))
+        row.connect("notify::value", lambda r, _p: not self._syncing and self.set(key, int(r.get_value())))
         group.add(row)
+        self.rows[key] = (row, None)
+
+    def _sync(self):
+        """Refresh every control after the config changed under it (theme package)."""
+        self._syncing = True
+        try:
+            for key, (row, opts) in self.rows.items():
+                if opts is None:
+                    row.set_value(self.cfg[key])
+                else:
+                    row.set_selected(opts.index(self.cfg[key]))
+            self._fill_accents()
+            if "variant" in self.rows:
+                self.rows["variant"][0].set_visible(themes.get(self.cfg["theme"])["scheme"] == "dark")
+        finally:
+            self._syncing = False
+
+    def _fill_accents(self):
+        th = self.cfg["theme"]
+        box = self.accent_box
+        while (c := box.get_first_child()):
+            box.remove(c)
+        self._css.load_from_string("".join(
+            f".nbx-{n} {{ background: {a['hex']}; border-radius: 99px; min-width: 26px; min-height: 26px; padding: 0; }}"
+            f".nbx-{n}:checked {{ box-shadow: 0 0 0 3px alpha(currentColor, .8); }}" for n, a in themes.get(th)["accents"].items()))
+        self._swatches, first = {}, None
+        for name in themes.accent_names(th):
+            b = Gtk.ToggleButton(tooltip_text=name)
+            b.add_css_class(f"nbx-{name}")
+            if first:
+                b.set_group(first)
+            first = first or b
+            b.connect("toggled", lambda w, n=name: w.get_active() and not self._syncing and self.set("accent", n))
+            box.append(b)
+            self._swatches[name] = b
+        self._mark_accent()
+
+    def _mark_accent(self):
+        was, self._syncing = self._syncing, True
+        a = self.cfg["accent"]
+        if a == "auto":
+            a = themes.get(self.cfg["theme"])["default_accent"]
+        for n, b in self._swatches.items():
+            b.set_active(n == a)
+        if hasattr(self, "hexrow"):
+            self.hexrow.set_text(self.cfg["accent"] if self.cfg["accent"].startswith("#") else "")
+        self._syncing = was
 
     # ---------- pages ----------
     def _page_look(self):
@@ -124,32 +183,27 @@ class SettingsWindow(Adw.PreferencesWindow):
             gb = Adw.PreferencesGroup()
             gb.add(Adw.Banner(title=f"Requisitos faltando: {'; '.join(warns)}. Veja a aba Diagnóstico.", revealed=True))
             page.add(gb)
+        gt = Adw.PreferencesGroup(title="Tema", description="Escolher um tema aplica um pacote (destaque, botões da janela, barra, cantos, ícones, dock). Depois cada item abaixo continua ajustável.")
+        self.combo(gt, "Tema", "theme")
+        page.add(gt)
         g = Adw.PreferencesGroup(title="Cores")
         row = Adw.ActionRow(title="Destaque", subtitle="Cor principal de seleção, botões e foco")
-        box = Gtk.Box(spacing=8, valign=Gtk.Align.CENTER)
-        first = None
-        for name in config.ACCENTS:
-            b = Gtk.ToggleButton(tooltip_text=name)
-            b.add_css_class(f"nbx-{name}")
-            if first:
-                b.set_group(first)
-            first = first or b
-            b.set_active(self.cfg["accent"] == name)
-            b.connect("toggled", lambda w, n=name: w.get_active() and self.set("accent", n))
-            box.append(b)
-        row.add_suffix(box)
+        self.accent_box = Gtk.Box(spacing=8, valign=Gtk.Align.CENTER)
+        row.add_suffix(self.accent_box)
         g.add(row)
-        hexrow = Adw.EntryRow(title="Cor personalizada (#RRGGBB)")
-        hexrow.set_text(self.cfg["accent"] if self.cfg["accent"].startswith("#") else "")
-        hexrow.set_show_apply_button(True)
-        hexrow.connect("apply", lambda r: self.set("accent", r.get_text().strip()))
-        g.add(hexrow)
-        self.combo(g, "Variante", "variant", "Darker usa fundo preto puro (telas OLED)")
+        self.hexrow = Adw.EntryRow(title="Cor personalizada (#RRGGBB)")
+        self.hexrow.set_show_apply_button(True)
+        self.hexrow.connect("apply", lambda r: self.set("accent", r.get_text().strip()))
+        g.add(self.hexrow)
+        self._fill_accents()
+        self.combo(g, "Variante", "variant", "Darker usa fundo preto puro (telas OLED); só nos temas escuros")
+        self.rows["variant"][0].set_visible(themes.get(self.cfg["theme"])["scheme"] == "dark")
         page.add(g)
         g2 = Adw.PreferencesGroup(title="Janelas e barra")
         self.combo(g2, "Botões da janela", "window_buttons")
         self.combo(g2, "Barra superior", "topbar")
         self.spin(g2, "Cantos arredondados", "radius", 6, 20, "em pixels")
+        self.combo(g2, "Fonte da interface", "font", "O Inter precisa estar instalado (sudo apt install fonts-inter)")
         page.add(g2)
         g3 = Adw.PreferencesGroup(title="Dock", description="Requer o Ubuntu Dock (padrão do Ubuntu). A dock não tem ampliação nem desfoque como no macOS.")
         self.combo(g3, "Estilo", "dock")
@@ -163,8 +217,9 @@ class SettingsWindow(Adw.PreferencesWindow):
         page = Adw.PreferencesPage(title="Ícones e fundo", icon_name="image-x-generic-symbolic")
         g = Adw.PreferencesGroup(title="Ícones")
         self.combo(g, "Conjunto", "icons", "O estilo macOS usa o WhiteSur (GPL-3.0), baixado de uma versão fixa do GitHub")
-        row = Adw.ActionRow(title="WhiteSur", subtitle="Instalado" if icons.has_theme(icons.BASE) else "Não instalado (~7 MB, verifica sha256)")
-        btn = Gtk.Button(label="Instalar", valign=Gtk.Align.CENTER, sensitive=not icons.has_theme(icons.BASE))
+        base = icons.base_name(self.cfg["theme"])
+        row = Adw.ActionRow(title="WhiteSur", subtitle="Instalado" if icons.has_theme(base) else "Não instalado (~7 MB, verifica sha256)")
+        btn = Gtk.Button(label="Instalar", valign=Gtk.Align.CENTER, sensitive=not icons.has_theme(base))
 
         def install(_b):
             btn.set_sensitive(False)
@@ -172,7 +227,7 @@ class SettingsWindow(Adw.PreferencesWindow):
 
             def work():
                 try:
-                    icons.ensure_whitesur(lambda *_: None)
+                    icons.ensure_whitesur(lambda *_: None, self.cfg["theme"])
                     apply(dict(self.cfg), only=["icons"], log=lambda *_: None)
                     GLib.idle_add(lambda: row.set_subtitle("Instalado") or False)
                 except Exception as e:

@@ -3,7 +3,7 @@
 import shutil
 import subprocess
 
-from . import icons
+from . import config, icons
 from .apply import TESTED_GNOME, UT, gnome_major
 
 
@@ -26,11 +26,17 @@ def check():
             out.append(("ok", "extensão User Themes instalada", ""))
         if not any("blur-my-shell" in e for e in lst):
             out.append(("info", "opcional: desfoque do fundo da dock/barra (Blur my Shell)", "gnome-extensions-app → Blur my Shell"))
-    out.append(("ok", "ícones WhiteSur instalados", "") if icons.has_theme(icons.BASE)
+    try:
+        theme = config.load()["theme"]
+    except Exception:  # broken config.toml: keep the checks that do not depend on it
+        theme = "nebulix"
+    out.append(("ok", "ícones WhiteSur instalados", "") if icons.has_theme(icons.base_name(theme))
                else ("warn", "ícones estilo macOS (WhiteSur) não instalados", "nebulix icons install"))
-    if not icons.has_theme("Papirus-Dark"):
-        out.append(("info", "Papirus-Dark ausente (fallback de ícones)", "sudo apt install papirus-icon-theme"))
+    if not icons.has_theme(icons.fallback_name(theme)):
+        out.append(("info", f"{icons.fallback_name(theme)} ausente (fallback de ícones)", "sudo apt install papirus-icon-theme"))
     fonts = _run("fc-list") if shutil.which("fc-list") else ""
+    if theme.startswith("macos") and "inter" not in fonts.lower():
+        out.append(("info", "fonte Inter ausente (usada na interface dos temas macOS)", "sudo apt install fonts-inter"))
     if "JetBrainsMono" not in fonts.replace(" ", ""):
         out.append(("info", "fonte JetBrains Mono Nerd Font ausente", "https://www.nerdfonts.com/font-downloads (JetBrainsMono)"))
     for tool, hint in (("starship", "https://starship.rs"), ("fastfetch", "sudo apt install fastfetch")):

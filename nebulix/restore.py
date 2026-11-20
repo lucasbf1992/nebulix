@@ -34,7 +34,7 @@ def restore(mode="undo", log=print, remove_icons=False, dry=False):
                     subprocess.run(["gsettings", "reset", s, k], capture_output=True)
     for e in st.manifest:
         if e.startswith("gtkblock:"):
-            _strip_block(Path(e[9:]), dry)
+            _strip_block(Path(e[9:]), dry, drop_if_empty=True)  # backed-up originals are restored below
         elif e == "flatpak" and shutil.which("flatpak"):
             if not dry:
                 subprocess.run(["flatpak", "override", "--user", "--nofilesystem=xdg-config/gtk-4.0",
@@ -62,7 +62,7 @@ def restore(mode="undo", log=print, remove_icons=False, dry=False):
                 shutil.copytree(src, p, symlinks=True) if src.is_dir() else shutil.copy2(src, p, follow_symlinks=False)
     _strip_block(paths.conf_home() / "gtk-4.0/gtk.css", dry, drop_if_empty=True)
     if remove_icons and not dry:
-        for n in ("WhiteSur-purple", "WhiteSur-purple-dark", "WhiteSur-purple-light"):
+        for n in ("WhiteSur-purple", "WhiteSur-purple-dark", "WhiteSur-purple-light", "WhiteSur", "WhiteSur-dark", "WhiteSur-light"):
             shutil.rmtree(paths.data_home() / "icons" / n, ignore_errors=True)
     if not dry:
         for d in (paths.data_home() / "backgrounds/nebulix", paths.data_home() / "org.gnome.Ptyxis/palettes"):

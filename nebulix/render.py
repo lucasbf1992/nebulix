@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 """Template engine.
 
-  ${purple}  ${purple|rgb}  ${purple|a35}  ${purple|nohash}  ${radius}  ${name}  ${version}
+  ${purple}  ${purple|rgb}  ${purple|a35}  ${purple|semi}  ${purple|nohash}  ${radius}  ${name}  ${version}
   /*@if key=value*/ ... /*@end*/   block kept only when config[key] == value
   #@if key=value ... #@end          same, for line-comment formats (toml, conf)
 """
@@ -9,7 +9,7 @@ import re
 
 from . import __version__
 
-RX = re.compile(r"\$\{([\w-]+)(?:\|(rgb|nohash|a(\d+)))?\}")
+RX = re.compile(r"\$\{([\w-]+)(?:\|(rgb|semi|nohash|a(\d+)))?\}")
 IF = re.compile(r"(?:/\*|#)@if (\w+)=(\w+)\*?/?\n?(.*?)(?:/\*|#)@end\*?/?\n?", re.S)
 
 
@@ -19,7 +19,10 @@ def _rgb(h):
 
 
 def render(text, tokens, cfg, where=""):
-    text = IF.sub(lambda m: m.group(3) if str(cfg.get(m.group(1))) == m.group(2) else "", text)
+    def cond(m):  # key=value is looked up in the config first, then in the tokens (e.g. scheme=dark)
+        v = cfg.get(m.group(1), tokens.get(m.group(1)))
+        return m.group(3) if str(v) == m.group(2) else ""
+    text = IF.sub(cond, text)
 
     def sub(m):
         key, mod, alpha = m.groups()
@@ -34,6 +37,8 @@ def render(text, tokens, cfg, where=""):
             return v
         if mod == "rgb":
             return ", ".join(map(str, _rgb(v)))
+        if mod == "semi":
+            return ";".join(map(str, _rgb(v)))
         if mod == "nohash":
             return v.lstrip("#")
         r, g, b = _rgb(v)
