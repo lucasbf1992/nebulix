@@ -410,24 +410,27 @@ def _icons(st, cfg, t, stage, dry, install, log):
         else:
             st.missing.append((f"{fb} ausente", "sudo apt install papirus-icon-theme"))
         return
-    entry = icons.SETS[mode]
-    base = icons.base_name(theme, mode)
-    if not icons.has_theme(base):
-        if install and not dry:
-            try:
-                icons.ensure_set(mode, log, theme)
-            except Exception as e:  # network or checksum failure: fall back to Papirus
-                log(f"! {entry['label']} indisponível ({e}); usando Papirus")
+    entry, accent = icons.SETS[mode], cfg["accent"]
+    wanted = icons.base_name(theme, mode, accent)
+    if not icons.has_theme(wanted) and not dry and (install or icons.cached_tarball(mode)):
+        try:  # a colour already in the cache installs without the network; the download needs the user's ask
+            icons.ensure_set(mode, log, theme, accent)
+        except Exception as e:  # network or checksum failure: fall back to what is installed, else Papirus
+            log(f"! {entry['label']} indisponível ({e}); usando o que há instalado")
+    base = icons.current_base(mode, theme, accent)
+    if not icons.has_theme(wanted):
+        cmd = f"nebulix icons install {mode}   (baixa ~{entry['size_mb']} MB, {entry['license']})"
+        if icons.has_theme(base):
+            st.missing.append((f"ícones {entry['label']} na cor do destaque ({wanted}) não instalados; usando {base}", cmd))
         else:
-            st.missing.append((f"ícones {entry['label']} não instalados; usando Papirus por enquanto",
-                               f"nebulix icons install {mode}   (baixa ~{entry['size_mb']} MB, {entry['license']})"))
+            st.missing.append((f"ícones {entry['label']} não instalados; usando Papirus por enquanto", cmd))
     if not icons.uses_overlay(theme):  # macOS themes: plain WhiteSur
         if icons.has_theme(base):
             st.gs_set(IFACE, "icon-theme", q(base))
         elif icons.has_theme(fb):
             st.gs_set(IFACE, "icon-theme", q(fb))
         return
-    root = icons.write_overlay(t, stage / "icons" / icons.THEME_NAME, theme, mode) if not dry else None
+    root = icons.write_overlay(t, stage / "icons" / icons.THEME_NAME, theme, mode, accent) if not dry else None
     if root:
         st.put_tree(root, paths.data_home() / "icons" / icons.THEME_NAME)
     st.gs_set(IFACE, "icon-theme", q(icons.THEME_NAME))

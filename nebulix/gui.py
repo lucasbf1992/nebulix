@@ -309,7 +309,7 @@ class SettingsWindow(Adw.PreferencesWindow):
         self.combo(g, "Conjunto", "icons", "O estilo macOS usa o WhiteSur (GPL-3.0), baixado de uma versão fixa do GitHub")
         sid = self.cfg["icons"] if self.cfg["icons"] in icons.SETS else "whitesur"
         entry = icons.SETS[sid]
-        base = icons.base_name(self.cfg["theme"], sid)
+        base = icons.base_name(self.cfg["theme"], sid, self.cfg["accent"])
         row = Adw.ActionRow(title=entry["label"], subtitle="Instalado" if icons.has_theme(base) else f"Não instalado (~{entry['size_mb']} MB, verifica sha256)")
         btn = Gtk.Button(label="Instalar", valign=Gtk.Align.CENTER, sensitive=not icons.has_theme(base))
 
@@ -319,7 +319,7 @@ class SettingsWindow(Adw.PreferencesWindow):
 
             def work():
                 try:
-                    icons.ensure_set(sid, lambda *_: None, self.cfg["theme"])
+                    icons.ensure_set(sid, lambda *_: None, self.cfg["theme"], self.cfg["accent"])
                     apply(dict(self.cfg), only=["icons"], log=lambda *_: None)
                     GLib.idle_add(lambda: row.set_subtitle("Instalado") or False)
                 except Exception as e:

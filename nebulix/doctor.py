@@ -41,13 +41,19 @@ def check():
         if not any("blur-my-shell" in e for e in lst):
             out.append(("info", "opcional: desfoque do fundo da dock/barra (Blur my Shell)", "gnome-extensions-app → Blur my Shell"))
     try:
-        theme = config.load()["theme"]
+        icfg = config.load()
+        theme = icfg["theme"]
     except Exception:  # broken config.toml: keep the checks that do not depend on it
-        theme = "nebulix"
+        icfg, theme = None, "nebulix"
     for sid, entry in icons.SETS.items():
         out.append(("ok", f"ícones {entry['label']} instalados", "") if icons.installed(sid)
                    else ("warn" if sid == "whitesur" else "info", f"ícones {entry['label']} não instalados (~{entry['size_mb']} MB)",
                          f"nebulix icons install {sid}"))
+    if icfg and icfg["icons"] in icons.SETS and icons.installed(icfg["icons"]):
+        want = icons.base_name(theme, icfg["icons"], icfg["accent"])
+        if not icons.has_theme(want):
+            out.append(("warn", f"a cor de ícones do destaque falta ({want}); usando {icons.current_base(icfg['icons'], theme, icfg['accent'])}",
+                        f"nebulix icons install {icfg['icons']}"))
     if not icons.has_theme(icons.fallback_name(theme)):
         out.append(("info", f"{icons.fallback_name(theme)} ausente (fallback de ícones)", "sudo apt install papirus-icon-theme"))
     fonts = _run("fc-list") if shutil.which("fc-list") else ""

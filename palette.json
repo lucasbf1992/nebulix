@@ -11,7 +11,6 @@
       "link": "cyan",
       "wallpaper_from": "nebulix",
       "icons": {
-        "color": "purple",
         "overlay": true
       },
       "package": {
@@ -107,7 +106,6 @@
       "link": "accent",
       "wallpaper_from": "macos-dark",
       "icons": {
-        "color": "default",
         "overlay": false
       },
       "package": {
@@ -212,7 +210,6 @@
       "link": "accent",
       "wallpaper_from": "macos-dark",
       "icons": {
-        "color": "default",
         "overlay": false
       },
       "package": {
@@ -313,7 +310,6 @@
       "link": "cyan",
       "wallpaper_from": "nebulix",
       "icons": {
-        "color": "purple",
         "overlay": true
       },
       "package": {

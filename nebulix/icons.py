@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 """macOS-style icons: downloaded, pinned icon sets (WhiteSur, MacTahoe, McMojave-circle) + Nebulix squircle folder overlay."""
+import colorsys
 import hashlib
 import os
 import shutil
@@ -16,7 +17,7 @@ from . import paths, palette, themes
 # an entry with its own sha256, or add a whole new set).
 #   install: installer arguments; `{dest}` and `{color}` are filled in. McMojave-circle drops the token that follows
 #            `-d <dir>` (so a harmless `-c` goes there) and WhiteSur/MacTahoe take plain `-d <dir> -t <color>`.
-#   colors:  installer colour name -> reference hex (the I2 mapping reads it). default_color is the colour used when
+#   colors:  installer colour name -> reference hex (the accent -> colour mapping reads it). default_color is the colour used when
 #            the theme asks for the plain blue; "default" means the installer's own default, which has no colour in
 #            the folder name.
 #   folders: the folder name is `<prefix>[-<color>]-<dark|light>`; the colour is left out when it is "default".
@@ -58,25 +59,67 @@ SETS = {
 THEME_NAME = "Nebulix-Icons"
 
 
-def set_color(set_id, theme):
-    """Installer colour of a set for a theme (the theme's colour while the accent does not drive it): the set's
-    blue for the plain colour, else the theme's colour when the set has it, else the set's blue."""
+NEUTRAL_SATURATION = 0.15  # below this an accent is a grey, not a colour
+_NOT_A_HUE = ("nord", "black")  # colours of a set that never win by hue (neutral tints)
+
+
+def _hue_sat(hexcolor):
+    r, g, b = (c / 255 for c in palette.rgb(hexcolor))
+    h, s, _v = colorsys.rgb_to_hsv(r, g, b)
+    return h * 360, s
+
+
+def _hue_distance(a, b):
+    d = abs(a - b) % 360
+    return min(d, 360 - d)
+
+
+def set_color(set_id, accent_hex):
+    """Installer colour of a set for an accent: the colour whose reference hue is closest to the accent's hue; an
+    accent with little saturation goes to the set's neutral colour (grey) when it has one, else to the set's blue."""
     entry = SETS[set_id]
-    c = themes.get(theme)["icons"]["color"]
-    return c if c in entry["colors"] and c != "default" else entry["default_color"]
+    hue, sat = _hue_sat(accent_hex)
+    if sat < NEUTRAL_SATURATION:
+        return entry["neutral"] if entry.get("neutral") in entry["colors"] else entry["default_color"]
+    cands = {c: _hue_distance(hue, _hue_sat(h)[0]) for c, h in entry["colors"].items()
+             if c != entry.get("neutral") and c not in _NOT_A_HUE}
+    return min(cands, key=lambda c: (cands[c], c != entry["default_color"])) if cands else entry["default_color"]
 
 
-def whitesur_color(theme):
-    """WhiteSur colour variant of a theme (`-t` of the pinned installer): blue (default) for macOS, purple for Nebulix."""
-    return set_color("whitesur", theme)
+def accent_color(set_id, theme, accent="auto"):
+    """Colour of a set for the accent of a theme (`auto` is the theme's own default accent)."""
+    return set_color(set_id, themes.accent_hex(theme, accent))
 
 
 def folder_name(set_id, color, scheme):
     return SETS[set_id]["prefix"] + ("" if color == "default" else f"-{color}") + f"-{scheme}"
 
 
-def base_name(theme, set_id="whitesur"):
-    return folder_name(set_id, set_color(set_id, theme), themes.get(theme)["scheme"])
+def base_name(theme, set_id="whitesur", accent="auto"):
+    """Folder the accent asks for: its colour, in the dark or light variant of the theme's scheme."""
+    return folder_name(set_id, accent_color(set_id, theme, accent), themes.get(theme)["scheme"])
+
+
+def _closeness(set_id, a, b):
+    """How far apart two colours of a set look (hue distance; a grey against a colour counts as far)."""
+    colors = SETS[set_id]["colors"]
+    (ha, sa), (hb, sb) = _hue_sat(colors[a]), _hue_sat(colors[b])
+    if (sa < NEUTRAL_SATURATION) != (sb < NEUTRAL_SATURATION):
+        return 360
+    return _hue_distance(ha, hb)
+
+
+def current_base(set_id, theme, accent="auto"):
+    """Folder to use now: the one the accent asks for, else the installed colour of the set that is closest to it
+    (same variant), else the wanted name (which then is not installed)."""
+    want = base_name(theme, set_id, accent)
+    if has_theme(want):
+        return want
+    color, scheme = accent_color(set_id, theme, accent), themes.get(theme)["scheme"]
+    have = [c for c in SETS[set_id]["colors"] if has_theme(folder_name(set_id, c, scheme))]
+    if not have:
+        return want
+    return folder_name(set_id, min(have, key=lambda c: (_closeness(set_id, color, c), c)), scheme)
 
 
 def uses_overlay(theme):
@@ -132,16 +175,16 @@ def installed(set_id):
     return any(p.is_dir() and (p.name == pre or p.name.startswith(pre + "-")) for d in icon_dirs() if d.is_dir() for p in d.iterdir())
 
 
-def ensure_set(set_id, log=print, theme="nebulix"):
-    """Install the colour of `set_id` that `theme` asks for (both its dark and light folders) into ~/.local/share/icons
+def ensure_set(set_id, log=print, theme="nebulix", accent="auto"):
+    """Install the colour of `set_id` that the accent of `theme` asks for (both its dark and light folders) into ~/.local/share/icons
     with the set's own installer, from the verified tarball: the cache when it holds one, else the download (then
     kept in the cache, so another colour needs no network). Nothing happens when the folder is already there. A failing
     installer leaves none of the folders it created."""
-    base = base_name(theme, set_id)
+    base = base_name(theme, set_id, accent)
     if has_theme(base):
         return True
     entry = SETS[set_id]
-    color = set_color(set_id, theme)
+    color = accent_color(set_id, theme, accent)
     with tempfile.TemporaryDirectory() as tmp:
         tmp = Path(tmp)
         tgz = cached_tarball(set_id)
@@ -205,11 +248,11 @@ GLYPHS = {
 }
 
 
-def write_overlay(t, root=None, theme="nebulix", set_id="whitesur"):
+def write_overlay(t, root=None, theme="nebulix", set_id="whitesur", accent="auto"):
     root = Path(root) if root else paths.data_home() / "icons" / THEME_NAME
     shutil.rmtree(root, ignore_errors=True)
     (root / "scalable/places").mkdir(parents=True)
-    base, fb = base_name(theme, set_id), fallback_name(theme)
+    base, fb = current_base(set_id, theme, accent), fallback_name(theme)
     inherits = ",".join([base] if has_theme(base) else []) + ("," if has_theme(base) else "") + f"{fb},hicolor"
     (root / "index.theme").write_text(
         f"[Icon Theme]\nName={THEME_NAME}\nComment=Nebulix squircle folders over WhiteSur/Papirus\n"

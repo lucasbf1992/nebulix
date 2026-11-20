@@ -239,7 +239,7 @@ class TestThemes(Sandbox):
         self.assertEqual(self.snapshot(), before)
 
     def test_macos_uses_plain_whitesur_and_nebulix_uses_overlay(self):
-        from nebulix import config, icons
+        from nebulix import config
         from nebulix.apply import apply
         for n in ("WhiteSur-dark", "WhiteSur-light", "WhiteSur-purple-dark", "WhiteSur-purple-light"):
             (self.home / ".local/share/icons" / n).mkdir(parents=True)
@@ -252,13 +252,24 @@ class TestThemes(Sandbox):
         self.assertEqual(self.gs()[key], "'Nebulix-Icons'")
         idx = (self.home / ".local/share/icons/Nebulix-Icons/index.theme").read_text()
         self.assertIn("Inherits=WhiteSur-purple-light", idx)
-        self.assertEqual(icons.base_name("macos-dark"), "WhiteSur-dark")
-        self.assertEqual(icons.whitesur_color("macos-dark"), "default")
 
     def test_whitesur_install_variant_is_passed_to_installer(self):
-        from nebulix import icons
-        self.assertEqual(icons.whitesur_color("nebulix"), "purple")
-        self.assertEqual(icons.whitesur_color("macos-light"), "default")
+        import tempfile
+        from unittest import mock
+        from nebulix import config, icons
+        from nebulix.apply import apply
+        from sandbox import make_icon_tarball
+        src = Path(tempfile.mkdtemp(prefix="nbx-src-"))
+        self.addCleanup(shutil.rmtree, src, True)
+        tb = make_icon_tarball(src, "WhiteSur", filename="v2025-02-10.tar.gz", colors=("default", "purple"))
+        log = Path(os.environ["FAKE_STATE"]) / "installer.log"
+        with mock.patch.dict("os.environ", {"NEBULIX_ICONS_SOURCE": str(src)}), \
+                mock.patch.dict(icons.SETS["whitesur"], sha256=tb.sha256):
+            for theme, color in (("nebulix", "purple"), ("macos-light", "default")):
+                apply(dict(config.apply_theme(self.cfg(), theme), icons="whitesur"), only=["icons"], install_icons=True,
+                      log=lambda *_: None)
+                self.assertTrue(log.read_text().splitlines()[-1].endswith(f"-t {color}"), theme)
+        self.assertEqual(self.gs()["org.gnome.desktop.interface|icon-theme"], "'WhiteSur-light'")
 
     def test_font_follows_theme_only_when_installed(self):
         from unittest import mock

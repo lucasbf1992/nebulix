@@ -77,7 +77,7 @@ def _icons_install(rest):
         print(f"icons = {sid}: não há nada para baixar (o conjunto vem do sistema)")
         return 0
     entry = icons.SETS[sid]
-    base = icons.base_name(c["theme"], sid)
+    base = icons.base_name(c["theme"], sid, c["accent"])
     if not icons.has_theme(base) and not icons.cached_tarball(sid) and not yes:
         print(f"Baixar ~{entry['size_mb']} MB ({entry['label']} {entry['tag']}, {entry['license']})? [s/N] ", end="", flush=True)
         try:
@@ -88,7 +88,7 @@ def _icons_install(rest):
             print("cancelado: nada foi baixado")
             return 0
     try:
-        icons.ensure_set(sid, print, c["theme"])
+        icons.ensure_set(sid, print, c["theme"], c["accent"])
     except Exception as e:
         print(f"erro: {entry['label']} indisponível ({e})", file=sys.stderr)
         return 1
