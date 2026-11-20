@@ -3,60 +3,14 @@
 import json
 import os
 import shutil
-import stat
 import sys
 import tempfile
 import unittest
 from itertools import product
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(ROOT))
-
-FAKE_GS = '''#!/usr/bin/env python3
-import json, os, sys
-f = os.path.join(os.environ["FAKE_STATE"], "gs.json")
-d = json.load(open(f)) if os.path.exists(f) else {}
-a = sys.argv[1:]
-key = "|".join(a[1:3])
-if a[0] == "get": print(d.get(key, "'default'"))
-elif a[0] == "set": d[key] = a[3]
-elif a[0] == "reset": d.pop(key, None)
-json.dump(d, open(f, "w"))
-'''
-FAKE_NOOP = '#!/bin/sh\nexit 0\n'
-
-
-class Sandbox(unittest.TestCase):
-    def setUp(self):
-        self.tmp = Path(tempfile.mkdtemp(prefix="nbx-test-"))
-        (self.tmp / "bin").mkdir()
-        (self.tmp / "state").mkdir()
-        (self.tmp / "home").mkdir()
-        (self.tmp / "bin/gsettings").write_text(FAKE_GS)
-        for n in ("dconf", "flatpak", "gnome-extensions", "gtk-update-icon-cache"):
-            (self.tmp / "bin" / n).write_text(FAKE_NOOP)
-        for f in (self.tmp / "bin").iterdir():
-            f.chmod(f.stat().st_mode | stat.S_IEXEC)
-        self.old = dict(os.environ)
-        for k in ("XDG_CONFIG_HOME", "XDG_DATA_HOME"):
-            os.environ.pop(k, None)
-        os.environ.update(HOME=str(self.tmp / "home"), FAKE_STATE=str(self.tmp / "state"),
-                          PATH=f"{self.tmp/'bin'}:{self.old['PATH']}")
-        self.home = self.tmp / "home"
-
-    def tearDown(self):
-        os.environ.clear()
-        os.environ.update(self.old)
-        shutil.rmtree(self.tmp, ignore_errors=True)
-
-    def gs(self):
-        f = self.tmp / "state/gs.json"
-        return json.loads(f.read_text()) if f.exists() else {}
-
-    def snapshot(self):
-        return {str(p.relative_to(self.home)): p.read_bytes() for p in self.home.rglob("*")
-                if p.is_file() and "nebulix.removed" not in str(p)}
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from sandbox import ROOT, Sandbox  # noqa: E402  (shared fakes; also puts the repo root on sys.path)
 
 
 class TestConfig(unittest.TestCase):
