@@ -1,0 +1,20 @@
+@HOME@/.local/share/themes/Nebulix-Dark/index.theme
+@HOME@/.local/share/themes/Nebulix-Dark/gtk-3.0
+@HOME@/.local/share/themes/Nebulix-Dark/gtk-4.0
+@HOME@/.config/gtk-4.0/nebulix-colors.css
+@HOME@/.config/gtk-4.0/nebulix-tweaks.css
+gtkblock:@HOME@/.config/gtk-4.0/gtk.css
+flatpak
+@HOME@/.local/share/themes/Nebulix-Dark/gnome-shell
+ext:user-theme@gnome-shell-extensions.gcampax.github.com
+@HOME@/.local/share/org.gnome.Ptyxis/palettes/nebulix.palette
+ptyxis:00000000-0000-4000-8000-000000000040
+gnt:00000000-0000-4000-8000-000000000040:
+@HOME@/.config/starship.toml
+@HOME@/.config/fastfetch/config.jsonc
+@HOME@/.config/btop/themes/nebulix.theme
+@HOME@/.config/nvim/colors/nebulix.lua
+@HOME@/.vscode/extensions/nebulix.nebulix-theme-0.4.0
+vscext:@HOME@/.vscode/extensions/extensions.json	0
+vscode:@HOME@/.config/Code/User/settings.json	1	"Mine"
+@HOME@/.local/share/icons/Nebulix-Icons

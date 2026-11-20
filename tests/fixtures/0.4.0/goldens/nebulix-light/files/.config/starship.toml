@@ -1,0 +1,54 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Nebulix 0.4.0 — Starship prompt
+"$schema" = 'https://starship.rs/config-schema.json'
+add_newline = true
+format = """
+[](fg:#4E24B5)$username[](fg:#4E24B5 bg:#6B3DD9)$directory[](fg:#6B3DD9 bg:#C21E9B)$git_branch$git_status[](fg:#C21E9B bg:#E6DDF7)$python$nodejs$rust$golang$cmd_duration[](fg:#E6DDF7)
+$character"""
+
+[username]
+show_always = true
+style_user = "bg:#4E24B5 fg:#FFFFFF bold"
+style_root = "bg:#C8264F fg:#FFFFFF bold"
+format = '[ $user ]($style)'
+
+[directory]
+style = "bg:#6B3DD9 fg:#FFFFFF bold"
+format = "[ $path ]($style)"
+truncation_length = 3
+truncation_symbol = "…/"
+
+[git_branch]
+symbol = " "
+style = "bg:#C21E9B fg:#FFFFFF bold"
+format = '[ $symbol$branch ]($style)'
+
+[git_status]
+style = "bg:#C21E9B fg:#FFFFFF"
+format = '[$all_status$ahead_behind ]($style)'
+
+[python]
+symbol = " "
+style = "bg:#E6DDF7 fg:#0A7C86"
+format = '[ $symbol$version ]($style)'
+[nodejs]
+symbol = " "
+style = "bg:#E6DDF7 fg:#0A7C86"
+format = '[ $symbol$version ]($style)'
+[rust]
+symbol = " "
+style = "bg:#E6DDF7 fg:#0A7C86"
+format = '[ $symbol$version ]($style)'
+[golang]
+symbol = " "
+style = "bg:#E6DDF7 fg:#0A7C86"
+format = '[ $symbol$version ]($style)'
+
+[cmd_duration]
+min_time = 2000
+style = "bg:#E6DDF7 fg:#8A6100"
+format = '[ 󰔛 $duration ]($style)'
+
+[character]
+success_symbol = "[❯](bold #14774A)"
+error_symbol = "[❯](bold #C8264F)"

@@ -1,0 +1,13 @@
+/* SPDX-License-Identifier: GPL-3.0-or-later */
+/* Nebulix 0.4.0 — shape tweaks (radius, focus, window buttons). Needs libadwaita 1.x */
+button, entry, .card, .boxed-list, popover > contents, .toolbar, row.activatable, .navigation-sidebar > row, .sidebar-pane row {
+  border-radius: 8px;
+}
+.card, .boxed-list, preferencesgroup > box > box > list, popover > contents { border-radius: 14px; }
+window.background:not(.fullscreen):not(.maximized):not(.tiled) { border-radius: 20px; }
+button.suggested-action, button.pill.suggested-action { background-color: #812EFF; color: #ECE6FF; }
+switch:checked { background-color: #812EFF; }
+selection, text selection { background-color: rgba(166, 107, 255, 0.35); }
+*:focus-visible { outline-color: #A66BFF; }
+headerbar { box-shadow: inset 0 -1px #3A2C63; }
+.navigation-sidebar > row:selected { background-color: rgba(166, 107, 255, 0.2); color: #ECE6FF; }

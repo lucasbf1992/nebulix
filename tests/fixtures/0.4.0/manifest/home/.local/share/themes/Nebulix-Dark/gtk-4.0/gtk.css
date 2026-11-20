@@ -1,0 +1,5 @@
+/* SPDX-License-Identifier: GPL-3.0-or-later */
+/* Nebulix 0.4.0 — GTK4 theme. Builds on GTK's built-in dark stylesheet. */
+@import url("resource:///org/gtk/libgtk/theme/Default/Default-dark.css");
+@import url("colors.css");
+@import url("tweaks.css");

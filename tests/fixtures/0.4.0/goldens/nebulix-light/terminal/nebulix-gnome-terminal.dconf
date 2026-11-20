@@ -1,0 +1,21 @@
+[/]
+visible-name='Nebulix'
+use-theme-colors=false
+foreground-color='#1B1430'
+background-color='#FFFFFF'
+bold-color-same-as-fg=true
+cursor-colors-set=true
+cursor-background-color='#6B3DD9'
+cursor-foreground-color='#FFFFFF'
+cursor-shape='block'
+highlight-colors-set=true
+highlight-background-color='#6B3DD9'
+highlight-foreground-color='#FFFFFF'
+palette=['#1B1430', '#C8264F', '#14774A', '#8A6100', '#4455D6', '#8A3FD0', '#0A7C86', '#6F6496', '#4A3F73', '#E5365F', '#1E9E63', '#B07B00', '#6677F0', '#A66BFF', '#12A5B0', '#1B1430']
+use-transparent-background=false
+background-transparency-percent=0
+cell-height-scale=1
+default-size-columns=80
+default-size-rows=24
+font='JetBrains Mono 11'
+use-system-font=false

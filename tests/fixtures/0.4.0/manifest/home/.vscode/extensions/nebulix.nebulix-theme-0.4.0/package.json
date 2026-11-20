@@ -1,0 +1,38 @@
+{
+  "name": "nebulix-theme",
+  "displayName": "Nebulix",
+  "description": "Themes for developers: Nebulix, macOS Dark and Light.",
+  "version": "0.4.0",
+  "publisher": "nebulix",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.80.0"
+  },
+  "categories": [
+    "Themes"
+  ],
+  "contributes": {
+    "themes": [
+      {
+        "label": "Nebulix Dark",
+        "uiTheme": "vs-dark",
+        "path": "./themes/nebulix.json"
+      },
+      {
+        "label": "Nebulix macOS Dark",
+        "uiTheme": "vs-dark",
+        "path": "./themes/macos-dark.json"
+      },
+      {
+        "label": "Nebulix macOS Light",
+        "uiTheme": "vs",
+        "path": "./themes/macos-light.json"
+      },
+      {
+        "label": "Nebulix Light",
+        "uiTheme": "vs",
+        "path": "./themes/nebulix-light.json"
+      }
+    ]
+  }
+}
