@@ -25,5 +25,12 @@ WhiteSur, MacTahoe e McMojave-circle baixados sob demanda, cor do ícone seguind
 - Zoom da dock: fundo da dock crescer com o zoom, cliques na parte ampliada, zoom em dock auto-ocultável, pulo ao abrir app.
 - Conferir wallpaper, pastas dos ícones e editor em uso diário.
 
+## Avaliado e deixado de fora (2026-11-21)
+Itens pensados para desenvolvedores que não entram no plano atual. Podem voltar se passarem a fazer falta.
+- **Contexto visível no prompt (Starship):** sinais de root, SSH e produção. Implementado e testado, mas descartado por dar pouco retorno pelo trabalho de manter; quem usa outro prompt (por exemplo Powerlevel10k) também não o veria.
+- **Terminal acompanha o sistema:** já existe desde a 0.4.0. A paleta do Ptyxis traz `[Dark]` e `[Light]` e o perfil usa `interface-style = system`, então o terminal troca junto com o claro/escuro do sistema.
+- **Ferramentas de terminal (delta, bat, fzf, eza/LS_COLORS, tmux), modo apresentação, troca automática claro/escuro por horário ou sol e paleta como API (`nebulix palette`):** fora do plano por ora.
+- **Destaque por projeto** e **exportar/importar dotfiles:** ideias registradas, sem data.
+
 ## Fora do escopo (decidido)
 Tema Qt/KDE, cursor próprio, GRUB, Plymouth e distribuição ampla (PPA, gnome-look, marketplaces).
